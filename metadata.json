@@ -1,0 +1,6 @@
+{
+  "name": "SPABB - Sistema de Avaliações",
+  "description": "Sistema de Avaliações, Boletim e Simulados da EMEF Antonio Barroso Braga. Permite visualização de notas dos alunos e painel administrativo com integração com Firebase Realtime Database e extração inteligente de notas via IA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
