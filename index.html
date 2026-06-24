@@ -1570,8 +1570,12 @@ function adminRemoveSimulado() {
   renderGrid();
 })();
 </script>
-  const firebaseConfig = {
-  apiKey: "AIzaSyDHqWn7PuVJj5fRVatTtu2BRPz6JlJ7wVY",
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getDatabase } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDHqWn7PuVJj5fRVatTtu2BRPz6J1J7wVY",
   authDomain: "avaliacao5ano-6eb8e.firebaseapp.com",
   databaseURL: "https://avaliacao5ano-6eb8e-default-rtdb.firebaseio.com",
   projectId: "avaliacao5ano-6eb8e",
@@ -1580,6 +1584,7 @@ function adminRemoveSimulado() {
   appId: "1:138458057498:web:60d3c6426c060b9b8b3aa3",
   measurementId: "G-8RJ6MYMRKW"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
