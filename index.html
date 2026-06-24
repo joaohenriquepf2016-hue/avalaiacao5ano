@@ -1570,6 +1570,22 @@ function adminRemoveSimulado() {
   renderGrid();
 })();
 </script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"75124c326cb447fe934cde04713ae013","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+  const firebaseConfig = {
+  apiKey: "AIzaSyDHqWn7PuVJj5fRVatTtu2BRPz6JlJ7wVY",
+  authDomain: "avaliacao5ano-6eb8e.firebaseapp.com",
+  databaseURL: "https://avaliacao5ano-6eb8e-default-rtdb.firebaseio.com",
+  projectId: "avaliacao5ano-6eb8e",
+  storageBucket: "avaliacao5ano-6eb8e.firebasestorage.app",
+  messagingSenderId: "138458057498",
+  appId: "1:138458057498:web:60d3c6426c060b9b8b3aa3",
+  measurementId: "G-8RJ6MYMRKW"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+window.db = db;
+</script>
+
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js"></script>
 </body>
 </html>
