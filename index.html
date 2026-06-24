@@ -554,8 +554,16 @@ function getState() {
   };
 }
 function setState(data) {
-  localStorage.setItem('spabb_data', JSON.stringify(data));
-  if (firebaseReady) syncToFirebaseSilent(data);
+
+  localStorage.setItem(
+    'spabb_data',
+    JSON.stringify(data)
+  );
+
+  set(
+    ref(window.db, "spabb_data"),
+    data
+  );
 }
 function getClasses() { return getState().classes || []; }
 function getStudents() { return getState().students || []; }
