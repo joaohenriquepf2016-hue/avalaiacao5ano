@@ -979,9 +979,9 @@ function openDashboard(studentId) {
 }
 
 function renderDashboard(student) {
-  const boletim = getBoletim(student.id);
-  const simulados = getSimulados(student.id);
-  const images = getBoletimImages(student.id);
+const boletim = getBoletim(student.id) || {};
+const simulados = getSimulados(student.id) || {};
+const images = getBoletimImages(student.id) || {};
 
   // Admin actions
   const adminActions = document.getElementById('dashAdminActions');
