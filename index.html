@@ -550,25 +550,38 @@ let selectedClassId = null; // Turma selecionada na página inicial
 // ── STATE MANAGEMENT (localStorage + Firebase) ──
 function getState() {
   const raw = localStorage.getItem('spabb_data');
+
   if (raw) {
     const data = JSON.parse(raw);
-    // Migração: garantir que classes exista
-    if (!data.classes) {
-      data.classes = [{ id: 'class_default', name: '5° A', year: '5º Ano' }];
-      // Migrar alunos existentes para a turma padrão
-      data.students.forEach(s => {
-        if (!s.classId) s.classId = 'class_default';
+
+    if (!data.students) data.students = [];
+    if (!data.boletim) data.boletim = {};
+    if (!data.simulados) data.simulados = {};
+    if (!data.boletimImages) data.boletimImages = {};
+    if (!data.classes) data.classes = [];
+
+    if (data.classes.length === 0) {
+      data.classes.push({
+        id: 'class_default',
+        name: '5° A',
+        year: '5º Ano'
       });
     }
+
+    data.students.forEach(s => {
+      if (!s.classId) s.classId = data.classes[0].id;
+    });
+
     return data;
   }
-  return { 
+
+  return {
     classes: [{ id: 'class_default', name: '5° A', year: '5º Ano' }],
-    students: [], 
-    boletim: {}, 
-    simulados: {}, 
-    boletimImages: {}, 
-    config: {} 
+    students: [],
+    boletim: {},
+    simulados: {},
+    boletimImages: {},
+    config: {}
   };
 }
 function setState(data) {
