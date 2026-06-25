@@ -560,10 +560,9 @@ function setState(data) {
     JSON.stringify(data)
   );
 
-  set(
-    ref(window.db, "spabb_data"),
-    data
-  );
+  if (firebaseReady && db) {
+  db.ref("spabb_data").set(data);
+ }
 }
 function getClasses() { return getState().classes || []; }
 function getStudents() { return getState().students || []; }
