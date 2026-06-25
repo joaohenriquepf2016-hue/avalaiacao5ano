@@ -885,17 +885,32 @@ async function adminAddStudent() {
 }
 
 function addStudent(name, classId, photo) {
-  const data = getState();
-  const id = 'stu_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-  data.students.push({ id, name: name.toUpperCase(), classId: classId, photo });
-  data.boletim[id] = {};
-  data.simulados[id] = [];
-  data.boletimImages[id] = [];
-  setState(data);
-  renderGrid();
-  renderAdminStudentList();
-  toast(`Aluno ${name.toUpperCase()} adicionado!`, 'success');
-  return id;
+    const data = getState();
+
+    if (!data.students) data.students = [];
+    if (!data.boletim) data.boletim = {};
+    if (!data.simulados) data.simulados = {};
+    if (!data.boletimImages) data.boletimImages = {};
+
+    const id = 'stu_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+    data.students.push({
+        id,
+        name: name.toUpperCase(),
+        classId: classId,
+        photo
+    });
+
+    data.boletim[id] = {};
+    data.simulados[id] = [];
+    data.boletimImages[id] = [];
+
+    setState(data);
+    renderGrid();
+    renderAdminStudentList();
+
+    toast(`Aluno ${name.toUpperCase()} adicionado!`, 'success');
+    return id;
 }
 
 // ── EDIT STUDENT ──
