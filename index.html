@@ -752,21 +752,16 @@ function deleteClass(id) {
     if (!confirm(`A turma "${cls.name}" possui ${studentsInClass.length} aluno(s). Deseja excluir a turma e todos os alunos?`)) return;
     // Remover alunos da turma
     data.students = data.students.filter(s => s.classId !== id);
-console.log("boletim:", data.boletim);
-console.log("simulados:", data.simulados);
-console.log("boletimImages:", data.boletimImages);
-    studentsInClass.forEach(s => {
-    if (data.boletim) {
-        delete data.boletim[s.id];
-    }
 
-    if (data.simulados) {
-        delete data.simulados[s.id];
-    }
+console.log("data =", data);
+console.log("data.boletim =", data.boletim);
+console.log("data.simulados =", data.simulados);
+console.log("data.boletimImages =", data.boletimImages);
 
-    if (data.boletimImages) {
-        delete data.boletimImages[s.id];
-    }
+studentsInClass.forEach(s => {
+    delete data.boletim[s.id];
+    delete data.simulados[s.id];
+    delete data.boletimImages[s.id];
 });
   } else {
     if (!confirm(`Deseja excluir a turma "${cls.name}"?`)) return;
