@@ -934,9 +934,9 @@ function deleteStudent(id) {
   if (!confirm('Tem certeza que deseja excluir este aluno e todos os seus dados?')) return;
   const data = getState();
   data.students = data.students.filter(x => x.id !== id);
-  delete data.boletim[id];
-  delete data.simulados[id];
-  delete data.boletimImages[id];
+if (data.boletim) delete data.boletim[id];
+if (data.simulados) delete data.simulados[id];
+if (data.boletimImages) delete data.boletimImages[id];
   setState(data);
   renderGrid();
   renderAdminStudentList();
