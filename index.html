@@ -526,6 +526,24 @@ storage = firebase.storage();
 firebaseReady = true;
 
 console.log("Firebase conectado!");
+
+// Carregar dados do Firebase
+db.ref("spabb_data").once("value")
+  .then((snapshot) => {
+    if (snapshot.exists()) {
+      localStorage.setItem(
+        "spabb_data",
+        JSON.stringify(snapshot.val())
+      );
+
+      console.log("Dados carregados do Firebase!");
+      renderClassNav();
+      renderGrid();
+    }
+  })
+  .catch((error) => {
+    console.error("Erro ao carregar dados:", error);
+  });
 let chartInstance = null;
 let selectedClassId = null; // Turma selecionada na página inicial
 
