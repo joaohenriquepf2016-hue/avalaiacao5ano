@@ -1,0 +1,2371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPABB · Sistema de Avaliações</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window['pdfjsLib']){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#4a80c4;--blue-light:#7da7e0;--blue-pale:#ddeaf8;--blue-dark:#2a5a9a;
+  --green:#5cb85c;--green-dark:#2e7d2e;--yellow:#f0a500;--red:#c0392b;
+  --orange:#e07000;--bg:#eef2f9;--card:#ffffff;--border:#cdddf0;
+  --text:#2c3e50;--muted:#7a8fa6;
+}
+body{font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.view{display:none;padding:24px;max-width:1200px;margin:0 auto}
+.view.active{display:block}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--card);border:2px solid var(--border);border-radius:18px;padding:18px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;box-shadow:0 4px 20px rgba(74,128,196,.13);flex-wrap:wrap;gap:12px}
+.brand h1{font-size:2.6rem;font-weight:900;color:var(--green);letter-spacing:5px;text-shadow:3px 3px 0 #2a6a2a;line-height:1}
+.brand h2{font-size:.95rem;font-weight:800;color:var(--yellow);letter-spacing:2px;margin-top:3px}
+.brand h3{font-size:.72rem;font-weight:700;color:var(--green);letter-spacing:1.5px;margin-top:2px}
+.topbar-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{border:none;border-radius:10px;padding:10px 18px;font-weight:700;font-size:.8rem;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.btn-blue{background:linear-gradient(135deg,var(--blue-light),var(--blue));color:#fff}
+.btn-green{background:linear-gradient(135deg,#6fcf6f,var(--green));color:#fff}
+.btn-red{background:linear-gradient(135deg,#e06050,var(--red));color:#fff}
+.btn-yellow{background:linear-gradient(135deg,#f5c842,#e09000);color:#333}
+.btn-outline{background:transparent;border:2px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-sm{padding:7px 13px;font-size:.72rem}
+
+/* ── STUDENT GRID ── */
+.class-header{text-align:center;margin-bottom:28px}
+.class-header h2{font-size:1.8rem;font-weight:900;color:var(--blue);letter-spacing:3px}
+.class-header p{font-size:.85rem;color:var(--muted);margin-top:4px}
+.grid-controls{display:flex;gap:10px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.student-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px}
+.student-card{background:var(--card);border:2px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .2s;box-shadow:0 2px 10px rgba(0,0,0,.07)}
+.student-card:hover{transform:translateY(-5px);box-shadow:0 8px 24px rgba(0,0,0,.14);border-color:var(--blue)}
+.student-card .photo-wrap{width:100%;aspect-ratio:1;background:#e8eef8;overflow:hidden;position:relative}
+.student-card .photo-wrap img{width:100%;height:100%;object-fit:cover}
+.student-card .photo-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;color:var(--blue-light)}
+.student-card .name-bar{background:linear-gradient(135deg,var(--blue-light),var(--blue));color:#fff;text-align:center;padding:10px 6px;font-size:.78rem;font-weight:800;letter-spacing:1px;text-transform:uppercase}
+.student-card .card-actions{position:absolute;top:6px;right:6px;display:flex;gap:4px;opacity:0;transition:opacity .2s}
+.student-card:hover .card-actions{opacity:1}
+.card-actions .btn-icon{width:28px;height:28px;border-radius:50%;border:none;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff}
+.card-actions .btn-del{background:var(--red)}
+.card-actions .btn-edit{background:var(--blue)}
+
+/* ── DASHBOARD ── */
+.dash-header{background:var(--card);border:2px solid var(--border);border-radius:18px;padding:22px 30px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;box-shadow:0 4px 20px rgba(74,128,196,.13);flex-wrap:wrap;gap:12px}
+.aluno-badge{background:linear-gradient(135deg,#f0fbff,#cce8f8);border:2px solid #70b0d8;border-radius:12px;padding:10px 22px;text-align:center}
+.aluno-badge .nome{font-size:1.1rem;font-weight:900;color:#1a60a0;letter-spacing:1.5px}
+.aluno-badge .sub{font-size:.62rem;font-weight:700;color:#3880c0;letter-spacing:1px;margin-top:2px}
+.pill{border-radius:12px;padding:13px 20px;text-align:center;font-weight:800;color:#fff}
+.pill .big{font-size:1.9rem;line-height:1}
+.pill .small{font-size:.6rem;letter-spacing:1.2px;margin-top:3px}
+.pill-blue{background:linear-gradient(135deg,var(--blue-light),var(--blue))}
+.pill-warn{background:linear-gradient(135deg,#f5c842,#e09000)}
+.pill-red{background:linear-gradient(135deg,#e06050,var(--red))}
+.pill-green{background:linear-gradient(135deg,#6fcf6f,var(--green))}
+
+.highlight-box{border-radius:14px;padding:16px 22px;margin-bottom:24px;display:flex;gap:16px;align-items:flex-start;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.highlight-box.warn{background:linear-gradient(135deg,#fffbf0,#fff3d0);border:2px solid #f0c040}
+.highlight-box.ok{background:linear-gradient(135deg,#f0fff0,#d0f0d0);border:2px solid #60c060}
+.highlight-box.danger{background:linear-gradient(135deg,#fff0f0,#ffd0d0);border:2px solid #e06060}
+.highlight-icon{font-size:2rem;flex-shrink:0}
+.highlight-content h4{font-size:.85rem;font-weight:800;letter-spacing:.8px;margin-bottom:5px;text-transform:uppercase}
+.highlight-content p{font-size:.78rem;line-height:1.7;color:#4a3a00}
+
+.section-title{font-size:.85rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card{background:var(--card);border:2px solid var(--border);border-radius:16px;padding:24px 28px;box-shadow:0 4px 18px rgba(74,128,196,.10);margin-bottom:24px;overflow-x:auto}
+
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:24px}
+.kpi{background:var(--card);border:2px solid var(--border);border-radius:13px;padding:16px 10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.07);transition:transform .15s}
+.kpi:hover{transform:translateY(-3px)}
+.kpi .klabel{font-size:.62rem;font-weight:800;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px}
+.kpi .kval{font-size:1.6rem;font-weight:900}
+.kpi .ksub{font-size:.62rem;font-weight:700;color:var(--muted);margin-top:3px}
+
+/* ── BOLETIM TABLE ── */
+.boletim-table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:660px}
+.boletim-table thead tr:first-child th{background:var(--blue-light);color:#fff;font-weight:800;letter-spacing:.8px;text-align:center;padding:11px 8px}
+.boletim-table thead tr:first-child th:first-child{background:#b8d0e8;color:var(--text);text-align:left;font-size:.75rem;border-radius:8px 0 0 0}
+.boletim-table thead tr:nth-child(2) th{background:var(--blue-pale);color:var(--text);font-weight:800;text-align:center;padding:8px 6px;font-size:.74rem;border-bottom:2px solid var(--border)}
+.boletim-table thead tr:nth-child(2) th:first-child{text-align:left;padding-left:8px}
+.boletim-table tbody tr{border-bottom:1px solid #e8eef8;transition:background .15s}
+.boletim-table tbody tr:nth-child(even){background:#fafcff}
+.boletim-table tbody tr:hover{background:#f0f6ff}
+.boletim-table tbody td{padding:10px 8px;text-align:center;font-size:.82rem}
+.boletim-table tbody td:first-child{text-align:left;font-weight:600;padding-left:8px}
+.boletim-table tfoot tr{background:var(--blue-pale)}
+.boletim-table tfoot td{padding:12px 8px;font-weight:800;text-align:center;font-size:.86rem;color:var(--blue)}
+.boletim-table tfoot td:first-child{text-align:right;color:var(--text);padding-right:10px;font-size:.8rem;font-weight:700}
+.g10{color:#1a6e2a;font-weight:800}.g9{color:#2e7d2e;font-weight:700}.g85{color:#4a8a00;font-weight:700}
+.g80{color:#4a80c4;font-weight:700}.g70{color:#c07800;font-weight:700}.g65{color:#d06000;font-weight:700}
+.g60{color:#c0392b;font-weight:700}.gavg{color:var(--blue);font-weight:900;font-size:.92rem}
+
+/* ── SIMULADO CARDS ── */
+.sim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px}
+.sim-card{background:var(--card);border:2px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);transition:transform .2s,box-shadow .2s}
+.sim-card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.13)}
+.sim-head{background:linear-gradient(90deg,var(--blue-light),var(--blue));color:#fff;text-align:center;padding:13px;font-size:1rem;font-weight:800;letter-spacing:1px}
+.sim-body{display:grid;grid-template-columns:1fr 1fr}
+.sim-item{padding:18px 12px;text-align:center;border-bottom:1px solid var(--border)}
+.sim-item:first-child{border-right:1px solid var(--border)}
+.sim-pct{font-size:1.9rem;font-weight:900}
+.sim-name{font-size:.62rem;font-weight:700;color:var(--muted);letter-spacing:1.5px;margin-top:3px}
+.sim-badges{display:grid;grid-template-columns:1fr 1fr}
+.sbadge{text-align:center;padding:9px 6px;font-size:.62rem;font-weight:800;letter-spacing:1px;color:#fff}
+.sbadge.adequado{background:var(--green)}
+.sbadge.intermediario{background:var(--yellow);color:#333}
+.sbadge.critico{background:var(--orange)}
+.sbadge.muito-critico{background:var(--red)}
+
+/* ── CHART ── */
+.legend-row{display:flex;gap:24px;margin-bottom:16px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;color:var(--muted)}
+.ldot{width:14px;height:14px;border-radius:50%}
+.ldot.port{background:var(--blue)}.ldot.mat{background:#e05a00}
+.chart-wrap{position:relative;height:340px}
+.zone-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.zl{display:flex;align-items:center;gap:7px;font-size:.7rem;font-weight:700;color:var(--muted)}
+.zbox{width:16px;height:14px;border-radius:3px;opacity:.55}
+.ref-legend{margin-top:12px;display:flex;gap:18px;flex-wrap:wrap;font-size:.68rem;font-weight:700}
+.rl-item{display:flex;align-items:center;gap:6px}
+.rl-line{display:inline-block;width:22px;border-top:3px dashed}
+
+/* ── PROGRESS BARS ── */
+.prog-row{margin-bottom:10px}
+.prog-label{display:flex;justify-content:space-between;font-size:.74rem;font-weight:700;color:#4a5a6a;margin-bottom:4px}
+.prog-track{background:#e8eef8;border-radius:20px;height:20px;overflow:hidden}
+.prog-fill{height:100%;border-radius:20px;display:flex;align-items:center;justify-content:flex-end;padding-right:9px;font-size:.65rem;font-weight:800;color:#fff}
+
+/* ── ANALYSIS ── */
+.analysis-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:4px}
+.an-card{border-radius:12px;padding:18px}
+.an-title{font-size:.73rem;font-weight:800;letter-spacing:.9px;margin-bottom:8px}
+.an-card p{font-size:.77rem;color:#4a5a6a;line-height:1.65}
+
+/* ── LOGIN ── */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:60vh}
+.login-box{background:var(--card);border:2px solid var(--border);border-radius:18px;padding:40px;width:100%;max-width:380px;text-align:center;box-shadow:0 8px 30px rgba(74,128,196,.15)}
+.login-box h2{font-size:1.3rem;font-weight:900;color:var(--blue);margin-bottom:6px;letter-spacing:1px}
+.login-box p{font-size:.8rem;color:var(--muted);margin-bottom:20px}
+.login-box input{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:10px;font-size:.9rem;margin-bottom:14px;outline:none;transition:border .2s}
+.login-box input:focus{border-color:var(--blue)}
+.login-error{color:var(--red);font-size:.78rem;font-weight:700;margin-bottom:10px;display:none}
+
+/* ── ADMIN PANEL ── */
+.admin-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.admin-tab{padding:10px 20px;border-radius:10px;border:2px solid var(--border);background:var(--card);cursor:pointer;font-weight:700;font-size:.8rem;transition:all .2s}
+.admin-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.admin-section{display:none}
+.admin-section.active{display:block}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:10px;font-size:.85rem;outline:none;transition:border .2s;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.admin-list{margin-top:16px}
+.admin-list-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px}
+.admin-list-item .info{flex:1}
+.admin-list-item .info strong{font-size:.85rem}
+.admin-list-item .info span{font-size:.72rem;color:var(--muted);margin-left:8px}
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.6rem;font-weight:800;letter-spacing:.7px}
+.tag.adequado{background:#d4edda;color:#145a1f}
+.tag.intermediario{background:#fff3cd;color:#856404}
+.tag.critico{background:#ffe0cc;color:#8a3a00}
+.tag.muito-critico{background:#f8d7da;color:#842029}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border-radius:18px;padding:30px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.modal h3{font-size:1.1rem;font-weight:900;color:var(--blue);margin-bottom:16px}
+.modal-close{float:right;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted);margin-top:-8px}
+.modal-close:hover{color:var(--red)}
+
+/* ── IMAGE GALLERY ── */
+.img-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:12px}
+.img-gallery-item{position:relative;border-radius:10px;overflow:hidden;border:2px solid var(--border);aspect-ratio:1}
+.img-gallery-item img{width:100%;height:100%;object-fit:cover}
+.img-gallery-item .remove-img{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{padding:14px 20px;border-radius:12px;color:#fff;font-weight:700;font-size:.82rem;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:slideIn .3s ease}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+.toast.info{background:var(--blue)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── CLASS NAVIGATION ── */
+.class-nav{background:var(--card);border:2px solid var(--border);border-radius:16px;padding:16px 24px;margin-bottom:24px;box-shadow:0 4px 16px rgba(74,128,196,.1)}
+.class-nav-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.class-nav-title{font-size:.85rem;font-weight:800;color:var(--blue);letter-spacing:1px;text-transform:uppercase}
+.class-tabs{display:flex;gap:10px;flex-wrap:wrap}
+.class-tab{padding:12px 24px;border-radius:12px;border:2px solid var(--border);background:var(--card);cursor:pointer;font-weight:700;font-size:.85rem;transition:all .2s;display:flex;align-items:center;gap:8px}
+.class-tab:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:0 4px 12px rgba(74,128,196,.15)}
+.class-tab.active{background:linear-gradient(135deg,var(--blue-light),var(--blue));color:#fff;border-color:var(--blue);box-shadow:0 4px 16px rgba(74,128,196,.3)}
+.class-tab .count{background:rgba(255,255,255,.3);padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:800}
+.class-tab.active .count{background:rgba(255,255,255,.25)}
+.class-tab:not(.active) .count{background:var(--blue-pale);color:var(--blue)}
+
+/* ── FIREBASE CONFIG ── */
+.config-banner{background:linear-gradient(135deg,#fff3d0,#ffe8a0);border:2px solid #f0c040;border-radius:12px;padding:14px 20px;margin-bottom:20px;font-size:.8rem;color:#6a4a00;font-weight:600;display:none}
+.config-banner.show{display:block}
+
+/* ── OCR LOADING ── */
+.ocr-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:3000;align-items:center;justify-content:center;flex-direction:column}
+.ocr-overlay.active{display:flex}
+.ocr-box{background:var(--card);border-radius:18px;padding:40px;text-align:center;max-width:400px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.ocr-box h3{font-size:1.2rem;font-weight:900;color:var(--blue);margin-bottom:12px}
+.ocr-box p{font-size:.85rem;color:var(--muted);margin-bottom:20px}
+.ocr-spinner{width:50px;height:50px;border:5px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ocr-progress{width:100%;height:8px;background:var(--border);border-radius:10px;overflow:hidden;margin-top:12px}
+.ocr-progress-bar{height:100%;background:linear-gradient(90deg,var(--blue-light),var(--blue));width:0%;transition:width .3s}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .sim-grid{grid-template-columns:1fr}
+  .kpi-strip{grid-template-columns:repeat(3,1fr)}
+  .analysis-grid{grid-template-columns:1fr}
+  .brand h1{font-size:2rem}
+  .form-row,.form-row-3{grid-template-columns:1fr}
+  .dash-header{flex-direction:column;text-align:center}
+  .student-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+}
+@media(max-width:480px){
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .topbar{flex-direction:column;text-align:center}
+  .view{padding:14px}
+  .student-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<!-- ══ TOAST ══ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ══ OCR OVERLAY ══ -->
+<div class="ocr-overlay" id="ocrOverlay">
+  <div class="ocr-box">
+    <div class="ocr-spinner"></div>
+    <h3>🔍 Processando Imagem</h3>
+    <p id="ocrStatus">Reconhecendo texto da imagem...</p>
+    <div class="ocr-progress"><div class="ocr-progress-bar" id="ocrProgress"></div></div>
+  </div>
+</div>
+
+<!-- ══ VIEW: HOME ══ -->
+<div class="view active" id="viewHome">
+  <div class="topbar">
+    <div class="brand">
+      <h1>SPABB</h1>
+      <h2>SISTEMA DE AVALIAÇÕES</h2>
+      <h3>EMEF ANTONIO BARROSO BRAGA</h3>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-blue" onclick="showView('viewAdminLogin')">🔒 Admin</button>
+    </div>
+  </div>
+  <div class="class-nav" id="classNav">
+    <div class="class-nav-header">
+      <div class="class-nav-title">📚 Turmas</div>
+    </div>
+    <div class="class-tabs" id="classTabs"></div>
+  </div>
+  <div class="class-header">
+    <h2 id="classTitle">5° A</h2>
+    <p id="classSubtitle">Clique na foto do aluno para ver o dashboard</p>
+  </div>
+  <div class="student-grid" id="studentGrid"></div>
+</div>
+
+<!-- ══ VIEW: DASHBOARD ══ -->
+<div class="view" id="viewDashboard">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <button class="btn btn-outline btn-sm" onclick="showView('viewHome')">← Voltar</button>
+      <div class="brand"><h1 style="font-size:1.8rem">SPABB</h1><h2>DASHBOARD DO ALUNO</h2></div>
+    </div>
+    <div class="topbar-actions" id="dashAdminActions"></div>
+  </div>
+  <div id="dashContent"></div>
+</div>
+
+<!-- ══ VIEW: ADMIN LOGIN ══ -->
+<div class="view" id="viewAdminLogin">
+  <div class="topbar">
+    <div class="brand"><h1>SPABB</h1><h2>ACESSO ADMINISTRADOR</h2></div>
+    <div class="topbar-actions"><button class="btn btn-outline btn-sm" onclick="showView('viewHome')">← Voltar</button></div>
+  </div>
+  <div class="login-wrap">
+    <div class="login-box">
+      <h2>🔒 Área Administrativa</h2>
+      <p>Entre com a senha para editar dados</p>
+      <div class="login-error" id="loginError">Senha incorreta!</div>
+      <input type="password" id="adminPassword" placeholder="Senha do administrador" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn btn-blue" style="width:100%" onclick="doLogin()">Entrar</button>
+      <p style="margin-top:14px;font-size:.7rem;color:var(--muted)"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VIEW: ADMIN PANEL ══ -->
+<div class="view" id="viewAdmin">
+  <div class="topbar">
+    <div class="brand"><h1>SPABB</h1><h2>PAINEL ADMINISTRATIVO</h2></div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline btn-sm" onclick="showView('viewHome')">🏠 Início</button>
+      <button class="btn btn-red btn-sm" onclick="doLogout()">Sair</button>
+    </div>
+  </div>
+  <div class="admin-tabs">
+    <div class="admin-tab active" onclick="switchAdminTab('tabClasses')">📚 Turmas</div>
+    <div class="admin-tab" onclick="switchAdminTab('tabStudents')">👨‍🎓 Alunos</div>
+    <div class="admin-tab" onclick="switchAdminTab('tabBoletim')">📋 Boletim</div>
+    <div class="admin-tab" onclick="switchAdminTab('tabSimulados')">🎯 Simulados</div>
+  </div>
+
+  <!-- TAB: Classes -->
+  <div class="admin-section active" id="tabClasses">
+    <div class="card">
+      <p class="section-title">📚 Gerenciar Turmas</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome da Turma</label>
+          <input type="text" id="adminClassName" placeholder="Ex: 5° A, 6° B, 9° C">
+        </div>
+        <div class="form-group">
+          <label>Ano/Série (opcional)</label>
+          <input type="text" id="adminClassYear" placeholder="Ex: 5º Ano, 6º Ano">
+        </div>
+      </div>
+      <button class="btn btn-green" onclick="adminAddClass()">+ Adicionar Turma</button>
+      <div class="admin-list" id="adminClassList"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Students -->
+  <div class="admin-section" id="tabStudents">
+    <div class="card">
+      <p class="section-title">👨‍🎓 Gerenciar Alunos</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome do Aluno</label>
+          <input type="text" id="adminStudentName" placeholder="Nome completo">
+        </div>
+        <div class="form-group">
+          <label>Turma</label>
+          <select id="adminStudentClass"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Foto do Aluno</label>
+        <input type="file" id="adminStudentPhoto" accept="image/*">
+      </div>
+      <button class="btn btn-green" onclick="adminAddStudent()">+ Adicionar Aluno</button>
+      <div class="admin-list" id="adminStudentList"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Boletim -->
+  <div class="admin-section" id="tabBoletim">
+    <div class="card">
+      <p class="section-title">📋 Gerenciar Boletim</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Aluno</label>
+          <select id="adminBoletimStudent" onchange="loadAdminBoletim()"></select>
+        </div>
+        <div class="form-group">
+          <label>Período (Bimestre)</label>
+          <select id="adminBoletimPeriod" onchange="loadAdminBoletim()">
+            <option value="1">1º Período</option>
+            <option value="2">2º Período</option>
+            <option value="3">3º Período</option>
+            <option value="4">4º Período</option>
+          </select>
+        </div>
+      </div>
+      <div id="adminBoletimSubjects"></div>
+      <button class="btn btn-green" onclick="adminSaveBoletim()">💾 Salvar Boletim</button>
+      <div style="margin-top:20px">
+        <p class="section-title">📷 Anexar Imagens ou PDF do Boletim</p>
+        <p style="font-size:.75rem;color:var(--muted);margin-bottom:10px;font-weight:600">
+          💡 Envie imagens ou o PDF do boletim — o sistema reconhecerá automaticamente as notas de cada disciplina e as distribuirá nos períodos corretos (1º, 2º, 3º, 4º).
+        </p>
+        <div class="form-group">
+          <input type="file" id="adminBoletimImg" accept="image/*,application/pdf" multiple>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-blue btn-sm" onclick="adminUploadBoletimImages()">📎 Enviar e Reconhecer Notas</button>
+          <button class="btn btn-yellow btn-sm" onclick="rerunOCROnExisting()">🔍 Re-processar Imagens Existentes</button>
+        </div>
+        <div class="img-gallery" id="adminBoletimGallery"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Simulados -->
+  <div class="admin-section" id="tabSimulados">
+    <div class="card" id="simAutoCard">
+      <p class="section-title">🤖 Lançamento Automático de Simulado (PDF)</p>
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:10px">
+        💡 Escolha a disciplina, escolha a turma, informe o nome do simulado e anexe o PDF com os resultados. O sistema reconhece o nome de cada aluno, a nota (lançada com 1 casa decimal) e a situação.
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Turma</label>
+          <select id="simAutoClass" onfocus="simAutoFillClasses()"></select>
+        </div>
+        <div class="form-group">
+          <label>Disciplina</label>
+          <select id="simAutoDisc">
+            <option value="port">Português</option>
+            <option value="mat">Matemática</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nome do Simulado</label>
+          <input type="text" id="simAutoName" placeholder="Ex: 1º Simulado SPABB">
+        </div>
+        <div class="form-group">
+          <label>PDF dos Resultados</label>
+          <input type="file" id="simAutoFile" accept="application/pdf">
+        </div>
+      </div>
+      <button class="btn btn-blue" onclick="simAutoRecognize()">🔍 Reconhecer Resultados</button>
+      <div id="simAutoStatus" style="font-size:.8rem;color:var(--muted);margin-top:8px"></div>
+      <div style="height:6px;background:rgba(128,128,128,.2);border-radius:4px;margin-top:6px;overflow:hidden"><div id="simAutoProg" style="height:100%;width:0;background:var(--accent,#3b82f6);transition:width .2s"></div></div>
+      <div id="simAutoResults" style="margin-top:12px"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-green" id="simAutoSaveBtn" disabled onclick="simAutoSave()">💾 Salvar Resultados</button>
+        <button class="btn btn-red" id="simAutoRemoveBtn" onclick="simAutoRemove()">🗑 Remover Resultados</button>
+      </div>
+    </div>
+    <div class="card">
+      <p class="section-title">🎯 Gerenciar Simulados</p>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Aluno</label>
+          <select id="adminSimStudent" onchange="loadAdminSimulados()"></select>
+        </div>
+        <div class="form-group">
+          <label>Nº do Simulado</label>
+          <input type="number" id="adminSimNumber" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>Nome do Simulado</label>
+          <input type="text" id="adminSimName" placeholder="Ex: 1º Simulado SPABB">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nota Português (%)</label>
+          <input type="number" id="adminSimPort" min="0" max="100" step="0.1" placeholder="0-100">
+        </div>
+        <div class="form-group">
+          <label>Situação Português</label>
+          <select id="adminSimPortSit">
+            <option value="ADEQUADO">ADEQUADO</option>
+            <option value="INTERMEDIARIO">INTERMEDIÁRIO</option>
+            <option value="CRITICO">CRÍTICO</option>
+            <option value="MUITO_CRITICO">MUITO CRÍTICO</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nota Matemática (%)</label>
+          <input type="number" id="adminSimMat" min="0" max="100" step="0.1" placeholder="0-100">
+        </div>
+        <div class="form-group">
+          <label>Situação Matemática</label>
+          <select id="adminSimMatSit">
+            <option value="ADEQUADO">ADEQUADO</option>
+            <option value="INTERMEDIARIO">INTERMEDIÁRIO</option>
+            <option value="CRITICO">CRÍTICO</option>
+            <option value="MUITO_CRITICO">MUITO CRÍTICO</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-green" onclick="adminSaveSimulado()">💾 Salvar Simulado</button>
+        <button class="btn btn-red" onclick="adminRemoveSimulado()">🗑 Remover Simulado</button>
+      </div>
+      <div class="admin-list" id="adminSimList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Edit Student ══ -->
+<div class="modal-overlay" id="modalEditStudent">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modalEditStudent')">&times;</button>
+    <h3>Editar Aluno</h3>
+    <input type="hidden" id="editStudentId">
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="editStudentName">
+    </div>
+    <div class="form-group">
+      <label>Turma</label>
+      <select id="editStudentClass"></select>
+    </div>
+    <div class="form-group">
+      <label>Nova Foto (opcional)</label>
+      <input type="file" id="editStudentPhoto" accept="image/*">
+    </div>
+    <button class="btn btn-green" onclick="saveEditStudent()">💾 Salvar</button>
+  </div>
+</div>
+<script>
+/* ══════════════════════════════════════════════════
+   SPABB — Sistema de Avaliações
+   Single-file app with Firebase Realtime Database
+   ══════════════════════════════════════════════════ */
+
+// ── DEFAULT DATA ──
+const DEFAULT_SUBJECTS = [
+  'ARTE','CIÊNCIAS','EDUCAÇÃO ÉTNICO-RACIAL','EDUCAÇÃO FINANCEIRA',
+  'EDUCAÇÃO SOCIOEMOCIONAL','FORMAÇÃO CIDADÃ','FORMAÇÃO DO LEITOR',
+  'GEOGRAFIA','HABILIDADES EM FOCO – LP','HABILIDADES EM FOCO – MA',
+  'HISTÓRIA','INGLÊS','LÍNGUA PORTUGUESA','MATEMÁTICA','RECREAÇÃO'
+];
+const ADMIN_PASSWORD = 'spabb2025';
+let isAdmin = false;
+let db = null;
+let storage = null;
+let firebaseReady = false;
+  const firebaseConfig = {
+  apiKey: "AIzaSyDHqWn7PuVJj5fRVatTtu2BRPz6JlJ7wVY",
+  authDomain: "avaliacao5ano-6eb8e.firebaseapp.com",
+  databaseURL: "https://avaliacao5ano-6eb8e-default-rtdb.firebaseio.com",
+  projectId: "avaliacao5ano-6eb8e",
+  storageBucket: "avaliacao5ano-6eb8e.firebasestorage.app",
+  messagingSenderId: "138458057498",
+  appId: "1:138458057498:web:60d3c6426c060b9b8b3aa3",
+  measurementId: "G-8RJ6MYMRKW"
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+
+db = firebase.database();
+storage = firebase.storage();
+
+firebaseReady = true;
+
+console.log("Firebase conectado!");
+
+// Carregar dados do Firebase
+db.ref("spabb_data").once("value")
+  .then((snapshot) => {
+    if (snapshot.exists()) {
+      localStorage.setItem(
+        "spabb_data",
+        JSON.stringify(snapshot.val())
+      );
+
+      console.log("Dados carregados do Firebase!");
+      renderClassNav();
+      renderGrid();
+    }
+  })
+  .catch((error) => {
+    console.error("Erro ao carregar dados:", error);
+  });
+let chartInstance = null;
+let selectedClassId = null; // Turma selecionada na página inicial
+
+// ── STATE MANAGEMENT (localStorage + Firebase) ──
+function getState() {
+  const raw = localStorage.getItem('spabb_data');
+
+  if (raw) {
+    const data = JSON.parse(raw);
+
+    if (!data.students) data.students = [];
+    if (!data.boletim) data.boletim = {};
+    if (!data.simulados) data.simulados = {};
+    if (!data.boletimImages) data.boletimImages = {};
+    if (!data.classes) data.classes = [];
+
+    if (data.classes.length === 0) {
+      data.classes.push({
+        id: 'class_default',
+        name: '5° A',
+        year: '5º Ano'
+      });
+    }
+
+    data.students.forEach(s => {
+      if (!s.classId) s.classId = data.classes[0].id;
+    });
+
+    return data;
+  }
+
+  return {
+    classes: [{ id: 'class_default', name: '5° A', year: '5º Ano' }],
+    students: [],
+    boletim: {},
+    simulados: {},
+    boletimImages: {},
+    config: {}
+  };
+}
+function setState(data) {
+
+  localStorage.setItem(
+    'spabb_data',
+    JSON.stringify(data)
+  );
+
+  if (firebaseReady && db) {
+  db.ref("spabb_data").set(data);
+ }
+}
+function getClasses() { return getState().classes || []; }
+function getStudents() { return getState().students || []; }
+function getBoletim(id) { const s = getState(); return (s.boletim || {})[id] || {}; }
+function getSimulados(id) { const s = getState(); return (s.simulados || {})[id] || []; }
+function getBoletimImages(id) { const s = getState(); return (s.boletimImages || {})[id] || []; }
+
+// ── TOAST ──
+function toast(msg, type='info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ── VIEW ROUTING ──
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'viewHome') { renderClassNav(); renderGrid(); }
+  if (id === 'viewAdmin') { renderAdminClassList(); renderAdminStudentList(); populateAdminSelects(); }
+}
+
+// ── LOGIN / LOGOUT ──
+function doLogin() {
+  const pw = document.getElementById('adminPassword').value;
+  if (pw === ADMIN_PASSWORD) {
+    isAdmin = true;
+    document.getElementById('adminPassword').value = '';
+    document.getElementById('loginError').style.display = 'none';
+    showView('viewAdmin');
+    toast('Acesso autorizado!', 'success');
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+  }
+}
+function doLogout() {
+  isAdmin = false;
+  showView('viewHome');
+  renderGrid(); // Atualizar grid para esconder botões de admin
+  toast('Sessão encerrada.', 'info');
+}
+
+// ── MODAL ──
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ── FILE TO BASE64 ──
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+// ── ADMIN TABS ──
+function switchAdminTab(tabId) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  if (event && event.target) event.target.classList.add('active');
+  if (tabId === 'tabBoletim' || tabId === 'tabSimulados' || tabId === 'tabStudents' || tabId === 'tabClasses') {
+    populateAdminSelects();
+    if (tabId === 'tabClasses') renderAdminClassList();
+  }
+}
+
+// ── POPULATE ADMIN SELECTS ──
+function populateAdminSelects() {
+  const students = getStudents();
+  const classes = getClasses();
+  const opts = students.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  const ph = '<option value="">Selecione um aluno</option>';
+  ['adminBoletimStudent','adminSimStudent'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = ph + opts;
+  });
+  
+  // Popular dropdown de turmas no formulário de adicionar aluno
+  const classSelect = document.getElementById('adminStudentClass');
+  if (classSelect) {
+    const classOpts = classes.map(c => `<option value="${c.id}"${c.id === selectedClassId ? ' selected' : ''}>${c.name}</option>`).join('');
+    classSelect.innerHTML = '<option value="">Selecione uma turma</option>' + classOpts;
+  }
+}
+
+// ══════════════════════════════════════════
+// CLASS MANAGEMENT
+// ══════════════════════════════════════════
+function adminAddClass() {
+  const name = document.getElementById('adminClassName').value.trim();
+  const year = document.getElementById('adminClassYear').value.trim();
+  if (!name) { toast('Informe o nome da turma.', 'error'); return; }
+  
+  const data = getState();
+  if (!data.classes) data.classes = [];
+  
+  const id = 'class_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  data.classes.push({ id, name, year });
+  setState(data);
+  
+  document.getElementById('adminClassName').value = '';
+  document.getElementById('adminClassYear').value = '';
+  
+  renderAdminClassList();
+  populateAdminSelects();
+  renderClassNav(); // Atualizar navegação de turmas
+  toast(`Turma "${name}" adicionada!`, 'success');
+}
+
+function renderAdminClassList() {
+  const el = document.getElementById('adminClassList');
+  if (!el) return;
+  const classes = getClasses();
+  const students = getStudents();
+  
+  if (classes.length === 0) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:.8rem;padding:10px">Nenhuma turma cadastrada.</p>';
+    return;
+  }
+  
+  el.innerHTML = classes.map(c => {
+    const count = students.filter(s => s.classId === c.id).length;
+    const isDefault = classes.length === 1;
+    return `
+    <div class="admin-list-item">
+      <div class="info">
+        <strong>${c.name}</strong>
+        <span>${c.year ? c.year + ' · ' : ''}${count} aluno(s)</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="editClass('${c.id}')">✏ Editar</button>
+        ${!isDefault ? `<button class="btn btn-red btn-sm" onclick="deleteClass('${c.id}')">🗑</button>` : ''}
+      </div>
+    </div>
+  `}).join('');
+}
+
+function editClass(id) {
+  const data = getState();
+  const cls = data.classes.find(c => c.id === id);
+  if (!cls) return;
+  
+  const newName = prompt('Nome da turma:', cls.name);
+  if (!newName) return;
+  
+  const newYear = prompt('Ano/Série:', cls.year || '');
+  
+  cls.name = newName.trim();
+  cls.year = newYear ? newYear.trim() : '';
+  
+  setState(data);
+  renderAdminClassList();
+  populateAdminSelects();
+  toast('Turma atualizada!', 'success');
+}
+
+function deleteClass(id) {
+  const data = getState();
+  const cls = data.classes.find(c => c.id === id);
+  if (!cls) return;
+  
+  const studentsInClass = data.students.filter(s => s.classId === id);
+  if (studentsInClass.length > 0) {
+    if (!confirm(`A turma "${cls.name}" possui ${studentsInClass.length} aluno(s). Deseja excluir a turma e todos os alunos?`)) return;
+    // Remover alunos da turma
+    data.students = data.students.filter(s => s.classId !== id);
+
+console.log("data =", data);
+console.log("data.boletim =", data.boletim);
+console.log("data.simulados =", data.simulados);
+console.log("data.boletimImages =", data.boletimImages);
+
+studentsInClass.forEach(s => {
+    delete data.boletim[s.id];
+    delete data.simulados[s.id];
+    delete data.boletimImages[s.id];
+});
+  } else {
+    if (!confirm(`Deseja excluir a turma "${cls.name}"?`)) return;
+  }
+  
+  data.classes = data.classes.filter(c => c.id !== id);
+  
+  // Se a turma selecionada foi excluída, selecionar a primeira disponível
+  if (selectedClassId === id) {
+    selectedClassId = data.classes.length > 0 ? data.classes[0].id : null;
+  }
+  
+  setState(data);
+  renderAdminClassList();
+  populateAdminSelects();
+  renderClassNav(); // Atualizar navegação de turmas
+  toast('Turma excluída!', 'info');
+}
+
+// ══════════════════════════════════════════
+// STUDENT GRID
+// ══════════════════════════════════════════
+function renderGrid() {
+  const grid = document.getElementById('studentGrid');
+  const students = getStudents();
+  const classes = getClasses();
+  
+  // Se não há turma selecionada, seleciona a primeira
+  if (!selectedClassId && classes.length > 0) {
+    selectedClassId = classes[0].id;
+  }
+  
+  // Filtrar alunos pela turma selecionada
+  const filtered = selectedClassId ? students.filter(s => s.classId === selectedClassId) : [];
+  
+  // Atualizar título da turma
+  const currentClass = classes.find(c => c.id === selectedClassId);
+  if (currentClass) {
+    document.getElementById('classTitle').textContent = currentClass.name;
+    document.getElementById('classSubtitle').textContent = currentClass.year ? `${currentClass.year} · Clique na foto do aluno para ver o dashboard` : 'Clique na foto do aluno para ver o dashboard';
+  }
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)">
+      <p style="font-size:3rem;margin-bottom:12px">👨‍🎓</p>
+      <p style="font-size:1rem;font-weight:700">Nenhum aluno cadastrado nesta turma</p>
+      <p style="font-size:.8rem;margin-top:6px">Entre como administrador para adicionar alunos</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(s => `
+    <div class="student-card" onclick="openDashboard('${s.id}')">
+      <div class="photo-wrap">
+        ${s.photo ? `<img src="${s.photo}" alt="${s.name}">` : `<div class="photo-placeholder">👤</div>`}
+        ${isAdmin ? `<div class="card-actions">
+          <button class="btn-icon btn-edit" onclick="event.stopPropagation();openEditStudent('${s.id}')" title="Editar">✏</button>
+          <button class="btn-icon btn-del" onclick="event.stopPropagation();deleteStudent('${s.id}')" title="Excluir">✕</button>
+        </div>` : ''}
+      </div>
+      <div class="name-bar">${s.name}</div>
+    </div>
+  `).join('');
+}
+
+// ── CLASS NAVIGATION ──
+function renderClassNav() {
+  const classes = getClasses();
+  const students = getStudents();
+  const tabsContainer = document.getElementById('classTabs');
+  const navContainer = document.getElementById('classNav');
+  
+  // Se há apenas 1 turma ou nenhuma, esconde a navegação
+  if (classes.length <= 1) {
+    navContainer.style.display = 'none';
+    return;
+  }
+  
+  navContainer.style.display = 'block';
+  
+  tabsContainer.innerHTML = classes.map(c => {
+    const count = students.filter(s => s.classId === c.id).length;
+    const isActive = c.id === selectedClassId;
+    return `<div class="class-tab${isActive ? ' active' : ''}" onclick="selectClass('${c.id}')">
+      <span>${c.name}</span>
+      <span class="count">${count}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectClass(classId) {
+  selectedClassId = classId;
+  renderClassNav();
+  renderGrid();
+}
+
+// ── ADD STUDENT ──
+function openAddStudentModal() {
+  const name = prompt('Nome do aluno:');
+  if (!name) return;
+  // Usa a turma selecionada ou a primeira disponível
+  const classId = selectedClassId || (getClasses()[0] ? getClasses()[0].id : null);
+  if (!classId) {
+    alert('Nenhuma turma cadastrada. Entre como administrador para criar turmas.');
+    return;
+  }
+  addStudent(name, classId, null);
+}
+
+async function adminAddStudent() {
+  const name = document.getElementById('adminStudentName').value.trim();
+  const classId = document.getElementById('adminStudentClass').value;
+  if (!name) { toast('Informe o nome do aluno.', 'error'); return; }
+  if (!classId) { toast('Selecione uma turma.', 'error'); return; }
+  const photoInput = document.getElementById('adminStudentPhoto');
+  let photo = null;
+  if (photoInput.files[0]) photo = await fileToBase64(photoInput.files[0]);
+  addStudent(name, classId, photo);
+  document.getElementById('adminStudentName').value = '';
+  photoInput.value = '';
+}
+
+function addStudent(name, classId, photo) {
+    const data = getState();
+
+    if (!data.students) data.students = [];
+    if (!data.boletim) data.boletim = {};
+    if (!data.simulados) data.simulados = {};
+    if (!data.boletimImages) data.boletimImages = {};
+
+    const id = 'stu_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+    data.students.push({
+        id,
+        name: name.toUpperCase(),
+        classId: classId,
+        photo
+    });
+
+    data.boletim[id] = {};
+    data.simulados[id] = [];
+    data.boletimImages[id] = [];
+
+    setState(data);
+    renderGrid();
+    renderAdminStudentList();
+
+    toast(`Aluno ${name.toUpperCase()} adicionado!`, 'success');
+    return id;
+}
+
+// ── EDIT STUDENT ──
+function openEditStudent(id) {
+  const s = getStudents().find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('editStudentId').value = id;
+  document.getElementById('editStudentName').value = s.name;
+  
+  // Popular dropdown de turmas
+  const classes = getClasses();
+  const select = document.getElementById('editStudentClass');
+  select.innerHTML = classes.map(c => `<option value="${c.id}"${c.id === s.classId ? ' selected' : ''}>${c.name}</option>`).join('');
+  
+  openModal('modalEditStudent');
+}
+
+async function saveEditStudent() {
+  const id = document.getElementById('editStudentId').value;
+  const data = getState();
+  const idx = data.students.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  data.students[idx].name = document.getElementById('editStudentName').value.trim().toUpperCase();
+  data.students[idx].classId = document.getElementById('editStudentClass').value;
+  const photoInput = document.getElementById('editStudentPhoto');
+  if (photoInput.files[0]) data.students[idx].photo = await fileToBase64(photoInput.files[0]);
+  setState(data);
+  closeModal('modalEditStudent');
+  renderGrid();
+  renderAdminStudentList();
+  toast('Aluno atualizado!', 'success');
+}
+
+// ── DELETE STUDENT ──
+function deleteStudent(id) {
+  if (!confirm('Tem certeza que deseja excluir este aluno e todos os seus dados?')) return;
+  const data = getState();
+  data.students = data.students.filter(x => x.id !== id);
+if (data.boletim) delete data.boletim[id];
+if (data.simulados) delete data.simulados[id];
+if (data.boletimImages) delete data.boletimImages[id];
+  setState(data);
+  renderGrid();
+  renderAdminStudentList();
+  renderClassNav(); // Atualizar navegação de turmas
+  toast('Aluno excluído.', 'info');
+}
+
+// ── ADMIN STUDENT LIST ──
+function renderAdminStudentList() {
+  const el = document.getElementById('adminStudentList');
+  if (!el) return;
+  const students = getStudents();
+  const classes = getClasses();
+  if (students.length === 0) { el.innerHTML = '<p style="color:var(--muted);font-size:.8rem;padding:10px">Nenhum aluno cadastrado.</p>'; return; }
+  el.innerHTML = students.map(s => {
+    const className = classes.find(c => c.id === s.classId)?.name || 'Sem turma';
+    return `
+    <div class="admin-list-item">
+      <div class="info">
+        <strong>${s.name}</strong>
+        <span>${className}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-blue btn-sm" onclick="openDashboard('${s.id}')">📊 Ver</button>
+        <button class="btn btn-outline btn-sm" onclick="openEditStudent('${s.id}')">✏ Editar</button>
+        <button class="btn btn-red btn-sm" onclick="deleteStudent('${s.id}')">🗑</button>
+      </div>
+    </div>
+  `}).join('');
+}
+
+// ══════════════════════════════════════════
+// STUDENT DASHBOARD
+// ══════════════════════════════════════════
+function openDashboard(studentId) {
+  const student = getStudents().find(s => s.id === studentId);
+  if (!student) return;
+  showView('viewDashboard');
+  renderDashboard(student);
+}
+
+function renderDashboard(student) {
+const boletim = getBoletim(student.id) || {};
+const simulados = getSimulados(student.id) || {};
+const images = getBoletimImages(student.id) || {};
+
+  // Admin actions
+  const adminActions = document.getElementById('dashAdminActions');
+  if (isAdmin) {
+    adminActions.innerHTML = `
+      <button class="btn btn-yellow btn-sm" onclick="showView('viewAdmin')">⚙ Admin</button>
+      <button class="btn btn-blue btn-sm" onclick="goAdminEditStudent('${student.id}')">✏ Editar Notas</button>
+    `;
+  } else {
+    adminActions.innerHTML = '';
+  }
+
+  // Calculate averages
+  const periodKeys = ['1','2','3','4'];
+  const periodAvgs = periodKeys.map(p => {
+    const vals = Object.values(boletim).filter(b => b[p] !== undefined && b[p] !== null && b[p] !== '');
+    if (vals.length === 0) return null;
+    return vals.reduce((a, b) => a + parseFloat(b[p]), 0) / vals.length;
+  });
+  const firstPeriodAvg = periodAvgs[0];
+  const allGrades = Object.values(boletim).flatMap(b => periodKeys.map(p => parseFloat(b[p])).filter(v => !isNaN(v)));
+  const maxGrade = allGrades.length ? Math.max(...allGrades) : null;
+  const minGrade = allGrades.length ? Math.min(...allGrades) : null;
+  const bestSim = simulados.length ? Math.max(...simulados.flatMap(s => [s.port || 0, s.mat || 0])) : null;
+  const worstSim = simulados.length ? Math.min(...simulados.flatMap(s => [s.port || 0, s.mat || 0])) : null;
+
+  // Determine overall status
+  let statusClass = 'ok', statusIcon = '📊', statusTitle = 'BOM DESEMPENHO', statusText = '';
+  if (simulados.length > 0) {
+    const lastSim = simulados[simulados.length - 1];
+    const avgLast = ((lastSim.port || 0) + (lastSim.mat || 0)) / 2;
+    if (avgLast < 50) { statusClass = 'danger'; statusIcon = '🚨'; statusTitle = 'ATENÇÃO URGENTE'; }
+    else if (avgLast < 70) { statusClass = 'warn'; statusIcon = '⚠️'; statusTitle = 'ATENÇÃO NECESSÁRIA'; }
+  }
+  statusText = `${student.name} possui ${firstPeriodAvg !== null ? `média de ${firstPeriodAvg.toFixed(2)} no 1º bimestre` : 'dados pendentes no boletim'}.
+    ${simulados.length > 0 ? `Foram registrados ${simulados.length} simulado(s).` : 'Nenhum simulado registrado.'}`;
+
+  // Build dashboard HTML
+  let html = `
+  <div class="dash-header">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div class="aluno-badge">
+        <div class="nome">${student.name}</div>
+        <div class="sub">${student.class || 'ALUNO'}</div>
+      </div>
+      ${firstPeriodAvg !== null ? `<div class="pill pill-blue"><div class="big">${firstPeriodAvg.toFixed(2).replace('.',',')}</div><div class="small">MÉDIA<br>1º BIM.</div></div>` : ''}
+      ${simulados.length > 0 ? `<div class="pill ${statusClass==='danger'?'pill-red':statusClass==='warn'?'pill-warn':'pill-green'}"><div class="big">${simulados.length}</div><div class="small">SIMULADOS<br>REGISTRADOS</div></div>` : ''}
+    </div>
+  </div>
+
+  <div class="highlight-box ${statusClass}">
+    <div class="highlight-icon">${statusIcon}</div>
+    <div class="highlight-content">
+      <h4>${statusTitle}</h4>
+      <p>${statusText}</p>
+    </div>
+  </div>`;
+
+  // KPIs
+  html += `<div class="kpi-strip">`;
+  html += `<div class="kpi"><div class="klabel">Média 1º Período</div><div class="kval" style="color:var(--blue)">${firstPeriodAvg !== null ? firstPeriodAvg.toFixed(2).replace('.',',') : '—'}</div><div class="ksub">1º Bimestre</div></div>`;
+  html += `<div class="kpi"><div class="klabel">Nota Máxima</div><div class="kval" style="color:#1a6e2a">${maxGrade !== null ? maxGrade.toFixed(1).replace('.',',') : '—'}</div><div class="ksub">Melhor nota</div></div>`;
+  html += `<div class="kpi"><div class="klabel">Nota Mínima</div><div class="kval" style="color:#c0392b">${minGrade !== null ? minGrade.toFixed(1).replace('.',',') : '—'}</div><div class="ksub">Pior nota</div></div>`;
+  if (bestSim !== null) html += `<div class="kpi"><div class="klabel">Melhor Simulado</div><div class="kval" style="color:#f0a500">${bestSim.toFixed(1)}%</div><div class="ksub">Maior nota</div></div>`;
+  if (worstSim !== null) html += `<div class="kpi"><div class="klabel">Pior Simulado</div><div class="kval" style="color:#c0392b">${worstSim.toFixed(1)}%</div><div class="ksub">Menor nota</div></div>`;
+  html += `</div>`;
+
+  // ── BOLETIM TABLE ──
+  html += `<div class="card"><p class="section-title">📋 Resultado da Aprendizagem por Período — Boletim</p>`;
+  html += `<table class="boletim-table"><thead>
+    <tr><th style="width:40%">COMPONENTES CURRICULARES</th><th colspan="7" style="border-radius:0 8px 0 0">RESULTADO DA APRENDIZAGEM POR PERÍODO</th></tr>
+    <tr><th>COMPONENTES CURRICULARES</th><th>1º</th><th>2º</th><th>3º</th><th>4º</th><th>MÉDIA ANUAL</th><th>RECUPERAÇÃO</th><th>MÉDIA FINAL</th></tr>
+  </thead><tbody>`;
+
+  DEFAULT_SUBJECTS.forEach(sub => {
+    const b = boletim[sub] || {};
+    const vals = periodKeys.map(p => b[p]);
+    const nums = vals.map(v => parseFloat(v)).filter(v => !isNaN(v));
+    const avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+    html += `<tr><td>${sub}</td>`;
+    vals.forEach(v => {
+      if (v === undefined || v === null || v === '') { html += '<td>—</td>'; }
+      else { html += `<td class="${gradeClass(parseFloat(v))}">${parseFloat(v).toFixed(1).replace('.',',')}</td>`; }
+    });
+    html += `<td class="${avg !== null ? gradeClass(avg) : ''}">${avg !== null ? avg.toFixed(1).replace('.',',') : '—'}</td>`;
+    html += `<td>${b.recuperacao || '—'}</td>`;
+    html += `<td>${b.mediaFinal || '—'}</td></tr>`;
+  });
+
+  // Footer averages
+  html += `<tfoot><tr><td>MÉDIAS POR PERÍODO</td>`;
+  periodAvgs.forEach(a => { html += `<td class="gavg">${a !== null ? a.toFixed(2).replace('.',',') : '—'}</td>`; });
+  const allAvg = allGrades.length ? allGrades.reduce((a, b) => a + b, 0) / allGrades.length : null;
+  html += `<td class="gavg">${allAvg !== null ? allAvg.toFixed(2).replace('.',',') : '—'}</td><td>—</td><td>—</td></tr></tfoot></table></div>`;
+
+  // ── BOLETIM IMAGES ──
+  if (images.length > 0) {
+    html += `<div class="card"><p class="section-title">📷 Imagens do Boletim</p><div class="img-gallery">`;
+    images.forEach((img, i) => { html += `<div class="img-gallery-item"><img src="${img}" alt="Boletim ${i+1}" onclick="window.open(this.src)"></div>`; });
+    html += `</div></div>`;
+  }
+
+  // ── SIMULADOS ──
+  if (simulados.length > 0) {
+    // Warning banner if last sim is critical
+    const lastSim = simulados[simulados.length - 1];
+    const hasCritical = lastSim.portSit === 'CRITICO' || lastSim.portSit === 'MUITO_CRITICO' || lastSim.matSit === 'CRITICO' || lastSim.matSit === 'MUITO_CRITICO';
+    if (hasCritical) {
+      html += `<div class="warning-banner" style="background:linear-gradient(135deg,#fff5e0,#ffe8b8);border:2px solid #f0a500;border-radius:12px;padding:14px 20px;text-align:center;margin-bottom:20px;font-size:.85rem;font-weight:800;color:#7a4a00;letter-spacing:1px;box-shadow:0 3px 12px rgba(240,165,0,.18)">⚠️ &nbsp; ATENÇÃO: NÍVEL CRÍTICO DETECTADO NO ÚLTIMO SIMULADO — INTERVENÇÃO NECESSÁRIA &nbsp; ⚠️</div>`;
+    }
+
+    // Sim cards
+    html += `<div class="card" style="padding-bottom:8px"><p class="section-title">🎯 SPABB — Cards de Resultado por Simulado</p><div class="sim-grid">`;
+    simulados.forEach(s => {
+      html += `<div class="sim-card">
+        <div class="sim-head">${s.name || 'SIMULADO'}</div>
+        <div class="sim-body">
+          <div class="sim-item"><div class="sim-pct" style="color:${simColor(s.port)}">${s.port !== undefined ? s.port.toFixed(1)+'%' : '—'}</div><div class="sim-name">PORTUGUÊS</div></div>
+          <div class="sim-item"><div class="sim-pct" style="color:${simColor(s.mat)}">${s.mat !== undefined ? s.mat.toFixed(1)+'%' : '—'}</div><div class="sim-name">MATEMÁTICA</div></div>
+        </div>
+        <div class="sim-badges">
+          <div class="sbadge ${sitClass(s.portSit)}">${sitLabel(s.portSit)}</div>
+          <div class="sbadge ${sitClass(s.matSit)}">${sitLabel(s.matSit)}</div>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+
+    // KPI simulados
+    html += `<div class="kpi-strip">`;
+    simulados.forEach(s => {
+      html += `<div class="kpi"><div class="klabel">${s.name || 'Sim.'}</div>
+        <div class="kval" style="color:${simColor(s.port)};font-size:1.1rem">${s.port !== undefined ? s.port.toFixed(1)+'%' : '—'}</div>
+        <div class="ksub">Port. — <span class="tag ${sitClass(s.portSit)}">${sitLabel(s.portSit)}</span></div>
+      </div>
+      <div class="kpi"><div class="klabel">${s.name || 'Sim.'}</div>
+        <div class="kval" style="color:${simColor(s.mat)};font-size:1.1rem">${s.mat !== undefined ? s.mat.toFixed(1)+'%' : '—'}</div>
+        <div class="ksub">Mat. — <span class="tag ${sitClass(s.matSit)}">${sitLabel(s.matSit)}</span></div>
+      </div>`;
+    });
+    html += `</div>`;
+
+    // Chart
+    html += `<div class="card">
+      <p class="section-title">📈 Evolução de Desempenho — Gráfico de Linhas</p>
+      <div class="zone-legend">
+        <div class="zl"><div class="zbox" style="background:#c0392b"></div>Muito Crítico (&lt; 40%)</div>
+        <div class="zl"><div class="zbox" style="background:#e07000"></div>Crítico (40–69%)</div>
+        <div class="zl"><div class="zbox" style="background:#f0a500"></div>Intermediário (70–84%)</div>
+        <div class="zl"><div class="zbox" style="background:#5cb85c"></div>Adequado (≥ 85%)</div>
+      </div>
+      <div class="legend-row">
+        <div class="leg"><div class="ldot port"></div>Língua Portuguesa</div>
+        <div class="leg"><div class="ldot mat"></div>Matemática</div>
+      </div>
+      <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+      <div class="ref-legend">
+        <div class="rl-item"><span class="rl-line" style="border-color:#5cb85c"></span><span style="color:#5cb85c">Adequado (85%)</span></div>
+        <div class="rl-item"><span class="rl-line" style="border-color:#f0a500"></span><span style="color:#f0a500">Intermediário (70%)</span></div>
+        <div class="rl-item"><span class="rl-line" style="border-color:#e07000"></span><span style="color:#e07000">Crítico (40%)</span></div>
+      </div>
+    </div>`;
+
+    // Analysis cards
+    html += `<div class="card"><p class="section-title">🔍 Análise da Evolução nos Simulados</p><div class="analysis-grid">`;
+    simulados.forEach((s, i) => {
+      const avg = ((s.port || 0) + (s.mat || 0)) / 2;
+      let bg, border, titleColor, icon;
+      if (avg >= 85) { bg = '#f0fff0'; border = '#60c060'; titleColor = '#145a1f'; icon = '✅'; }
+      else if (avg >= 70) { bg = '#fff8e8'; border = '#e0b030'; titleColor = '#8a5a00'; icon = '📈'; }
+      else if (avg >= 40) { bg = '#fff5e0'; border = '#f0c040'; titleColor = '#8a5a00'; icon = '⚠️'; }
+      else { bg = '#fff0f0'; border = '#e08080'; titleColor = '#8a0000'; icon = '🚨'; }
+
+      let disc = '';
+      if (i > 0) {
+        const prev = simulados[i - 1];
+        const dPort = ((s.port || 0) - (prev.port || 0)).toFixed(1);
+        const dMat = ((s.mat || 0) - (prev.mat || 0)).toFixed(1);
+        disc = ` Variação: Port. ${dPort > 0 ? '+' : ''}${dPort} p.p., Mat. ${dMat > 0 ? '+' : ''}${dMat} p.p.`;
+      }
+      html += `<div class="an-card" style="background:${bg};border:1.5px solid ${border}">
+        <div class="an-title" style="color:${titleColor}">${icon} ${s.name || 'SIMULADO ' + (i+1)}</div>
+        <p>Português: <strong style="color:${simColor(s.port)}">${s.port !== undefined ? s.port.toFixed(1)+'%' : '—'}</strong> — ${sitLabel(s.portSit)}.
+        Matemática: <strong style="color:${simColor(s.mat)}">${s.mat !== undefined ? s.mat.toFixed(1)+'%' : '—'}</strong> — ${sitLabel(s.matSit)}.${disc}</p>
+      </div>`;
+    });
+    html += `</div>`;
+
+    // Progress bars
+    html += `<div style="margin-top:22px">
+      <p style="font-size:.74rem;font-weight:800;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px">📊 Comparativo de Evolução por Disciplina</p>
+      <p style="font-size:.7rem;font-weight:800;color:var(--blue);letter-spacing:.8px;margin-bottom:8px">LÍNGUA PORTUGUESA</p>`;
+    simulados.forEach(s => {
+      html += `<div class="prog-row"><div class="prog-label"><span>${s.name}</span><span style="color:${simColor(s.port)}">${s.port !== undefined ? s.port.toFixed(1)+'% — '+sitLabel(s.portSit) : '—'}</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${s.port || 0}%;background:${simGradient(s.port)}">${s.port !== undefined ? s.port.toFixed(1)+'%' : ''}</div></div></div>`;
+    });
+    html += `<p style="font-size:.7rem;font-weight:800;color:#e05a00;letter-spacing:.8px;margin-bottom:8px;margin-top:16px">MATEMÁTICA</p>`;
+    simulados.forEach(s => {
+      html += `<div class="prog-row"><div class="prog-label"><span>${s.name}</span><span style="color:${simColor(s.mat)}">${s.mat !== undefined ? s.mat.toFixed(1)+'% — '+sitLabel(s.matSit) : '—'}</span></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${s.mat || 0}%;background:${simGradient(s.mat)}">${s.mat !== undefined ? s.mat.toFixed(1)+'%' : ''}</div></div></div>`;
+    });
+    html += `</div></div>`;
+  } else {
+    html += `<div class="card" style="text-align:center;padding:40px"><p style="font-size:2rem;margin-bottom:10px">🎯</p><p style="font-weight:700;color:var(--muted)">Nenhum simulado registrado para este aluno.</p></div>`;
+  }
+
+  html += `<footer style="text-align:center;margin-top:20px;font-size:.72rem;color:#9ab0c8;font-weight:600;letter-spacing:.5px">SPABB · EMEF Antonio Barroso Braga · Dashboard de Avaliações Escolares — ${student.name}</footer>`;
+
+  document.getElementById('dashContent').innerHTML = html;
+
+  // Render chart if simulados exist
+  if (simulados.length > 0) {
+    setTimeout(() => renderChart(simulados), 100);
+  }
+}
+
+// ── CHART RENDERING ──
+function renderChart(simulados) {
+  const canvas = document.getElementById('lineChart');
+  if (!canvas) return;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  const labels = simulados.map(s => s.name || 'Sim.');
+  const portData = simulados.map(s => s.port || 0);
+  const matData = simulados.map(s => s.mat || 0);
+
+  const zoneBands = {
+    id: 'zoneBands',
+    beforeDraw(chart) {
+      const { ctx, scales: { y }, chartArea: ca } = chart;
+      if (!ca) return;
+      ctx.save();
+      const y40 = y.getPixelForValue(40), y70 = y.getPixelForValue(70), y85 = y.getPixelForValue(85);
+      const yBot = y.getPixelForValue(y.min), yTop = y.getPixelForValue(y.max);
+      ctx.fillStyle = 'rgba(192,57,43,0.08)'; ctx.fillRect(ca.left, y40, ca.width, yBot - y40);
+      ctx.fillStyle = 'rgba(224,112,0,0.06)'; ctx.fillRect(ca.left, y70, ca.width, y40 - y70);
+      ctx.fillStyle = 'rgba(240,165,0,0.07)'; ctx.fillRect(ca.left, y85, ca.width, y70 - y85);
+      ctx.fillStyle = 'rgba(92,184,92,0.08)'; ctx.fillRect(ca.left, yTop, ca.width, y85 - yTop);
+      ctx.setLineDash([8,5]);
+      ctx.strokeStyle = '#5cb85c'; ctx.lineWidth = 2; ctx.globalAlpha = .7;
+      ctx.beginPath(); ctx.moveTo(ca.left,y85); ctx.lineTo(ca.right,y85); ctx.stroke();
+      ctx.strokeStyle = '#f0a500'; ctx.globalAlpha = .5;
+      ctx.beginPath(); ctx.moveTo(ca.left,y70); ctx.lineTo(ca.right,y70); ctx.stroke();
+      ctx.strokeStyle = '#e07000'; ctx.globalAlpha = .4;
+      ctx.beginPath(); ctx.moveTo(ca.left,y40); ctx.lineTo(ca.right,y40); ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  function ptColor(v) { return v >= 85 ? '#1a6e2a' : v >= 70 ? '#f0a500' : v >= 40 ? '#e07000' : '#c0392b'; }
+
+  chartInstance = new Chart(canvas, {
+    type: 'line',
+    plugins: [zoneBands],
+    data: {
+      labels,
+      datasets: [
+        { label: 'Português', data: portData, borderColor: '#4a80c4', backgroundColor: 'rgba(74,128,196,.12)', pointBackgroundColor: portData.map(ptColor), pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 11, pointHoverRadius: 14, borderWidth: 3.5, tension: 0.35, fill: true },
+        { label: 'Matemática', data: matData, borderColor: '#e05a00', backgroundColor: 'rgba(224,90,0,.10)', pointBackgroundColor: matData.map(ptColor), pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 11, pointHoverRadius: 14, borderWidth: 3.5, tension: 0.35, fill: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#2c3e50', titleFont: { size: 13, weight: 'bold' }, bodyFont: { size: 12 }, padding: 14,
+          callbacks: { label(ctx) { const v = ctx.parsed.y; const n = v >= 85 ? '✅ Adequado' : v >= 70 ? '⚠️ Intermediário' : v >= 40 ? '🔶 Crítico' : '🚨 Muito Crítico'; return ` ${ctx.dataset.label}: ${v.toFixed(1)}% — ${n}`; } }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#e8eef8' }, ticks: { font: { size: 13, weight: '700' }, color: '#4a5a6a' } },
+        y: { min: 0, max: 100, grid: { color: '#e8eef8' }, ticks: { font: { size: 12, weight: '600' }, color: '#7a8fa6', callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+// ── HELPERS ──
+function gradeClass(v) { if (v >= 10) return 'g10'; if (v >= 9) return 'g9'; if (v >= 8.5) return 'g85'; if (v >= 8) return 'g80'; if (v >= 7) return 'g70'; if (v >= 6.5) return 'g65'; return 'g60'; }
+function simColor(v) { if (v === undefined || v === null) return 'var(--muted)'; if (v >= 85) return '#1a6e2a'; if (v >= 70) return '#c07800'; if (v >= 40) return '#e07000'; return '#c0392b'; }
+function simGradient(v) { if (v >= 85) return 'linear-gradient(90deg,#2e7d2e,#5cb85c)'; if (v >= 70) return 'linear-gradient(90deg,#c07000,#e09000)'; if (v >= 40) return 'linear-gradient(90deg,#c05000,#e07000)'; return 'linear-gradient(90deg,#a02020,#c03030)'; }
+function sitClass(s) { if (!s) return ''; return s.toLowerCase().replace('_', '-'); }
+function sitLabel(s) { if (!s) return '—'; return s.replace('_', ' '); }
+
+function goAdminEditStudent(id) {
+  showView('viewAdmin');
+  switchAdminTab('tabSimulados');
+  document.getElementById('adminSimStudent').value = id;
+  loadAdminSimulados();
+}
+
+// ══════════════════════════════════════════
+// ADMIN: BOLETIM
+// ══════════════════════════════════════════
+function loadAdminBoletim() {
+  const id = document.getElementById('adminBoletimStudent').value;
+  if (!id) return;
+  const boletim = getBoletim(id);
+  const period = document.getElementById('adminBoletimPeriod').value;
+  const container = document.getElementById('adminBoletimSubjects');
+
+  let html = `<div style="margin-top:14px">`;
+  DEFAULT_SUBJECTS.forEach(sub => {
+    const b = boletim[sub] || {};
+    const val = b[period] || '';
+    html += `<div class="form-row" style="margin-bottom:8px;align-items:end">
+      <div class="form-group" style="margin-bottom:0"><label>${sub}</label><input type="number" step="0.1" min="0" max="10" data-subject="${sub}" data-period="${period}" value="${val}" placeholder="0-10"></div>
+    </div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Load images
+  const images = getBoletimImages(id);
+  const gallery = document.getElementById('adminBoletimGallery');
+  gallery.innerHTML = images.map((img, i) => `<div class="img-gallery-item"><img src="${img}" alt="Boletim"><button class="remove-img" onclick="removeBoletimImage('${id}',${i})">✕</button></div>`).join('');
+}
+
+function adminSaveBoletim() {
+  const id = document.getElementById('adminBoletimStudent').value;
+  if (!id) { toast('Selecione um aluno.', 'error'); return; }
+  const period = document.getElementById('adminBoletimPeriod').value;
+  const data = getState();
+  if (!data.boletim[id]) data.boletim[id] = {};
+
+  document.querySelectorAll('#adminBoletimSubjects input[data-subject]').forEach(input => {
+    const sub = input.dataset.subject;
+    const val = input.value;
+    if (!data.boletim[id][sub]) data.boletim[id][sub] = {};
+    if (val !== '') data.boletim[id][sub][period] = parseFloat(val);
+    else delete data.boletim[id][sub][period];
+  });
+
+  setState(data);
+  toast('Boletim salvo com sucesso!', 'success');
+}
+
+// ── Extrai texto de um arquivo PDF usando pdf.js ──
+async function extractTextFromPDF(file) {
+  if (!window.pdfjsLib) throw new Error('pdf.js não carregado');
+  const arrayBuf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+  let fullText = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    // Agrupa itens da mesma linha (mesma coordenada Y aproximada)
+    const rows = {};
+    tc.items.forEach(it => {
+      const y = Math.round(it.transform[5]);
+      const bin = Math.round(y / 3) * 3;
+      if (!rows[bin]) rows[bin] = [];
+      rows[bin].push({ x: it.transform[4], str: it.str });
+    });
+    const sortedBins = Object.keys(rows).map(n => parseInt(n)).sort((a, b) => b - a);
+    sortedBins.forEach(b => {
+      const line = rows[b].sort((a, b) => a.x - b.x).map(o => o.str).join(' ');
+      fullText += line + '\n';
+    });
+    fullText += '\n';
+  }
+  return fullText;
+}
+
+// ── Fallback: rasteriza o PDF e roda OCR quando o PDF é uma digitalização (sem texto) ──
+async function ocrPDFFallback(file, statusEl, progressEl, indexInBatch, totalBatch) {
+  if (!window.pdfjsLib) throw new Error('pdf.js não carregado');
+  const arrayBuf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuf }).promise;
+  let combined = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    if (statusEl) statusEl.textContent = `OCR na página ${p}/${pdf.numPages} do PDF ${indexInBatch + 1}...`;
+    const page = await pdf.getPage(p);
+    const viewport = page.getViewport({ scale: 2.0 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    const dataUrl = canvas.toDataURL('image/png');
+    try {
+      const r = await Tesseract.recognize(dataUrl, 'por+eng', {
+        logger: m => {
+          if (m.status === 'recognizing text' && progressEl) {
+            const base = indexInBatch / totalBatch;
+            const perPage = (1 / totalBatch) / pdf.numPages;
+            progressEl.style.width = `${(base + perPage * ((p - 1) + m.progress)) * 100}%`;
+          }
+        }
+      });
+      combined += r.data.text + '\n';
+    } catch (err) {
+      console.error('OCR PDF page error:', err);
+    }
+  }
+  return combined;
+}
+
+async function adminUploadBoletimImages() {
+  const id = document.getElementById('adminBoletimStudent').value;
+  if (!id) { toast('Selecione um aluno.', 'error'); return; }
+  const files = document.getElementById('adminBoletimImg').files;
+  if (!files.length) { toast('Selecione arquivos (imagens ou PDF).', 'error'); return; }
+
+  // Show OCR overlay
+  const overlay = document.getElementById('ocrOverlay');
+  const statusEl = document.getElementById('ocrStatus');
+  const progressEl = document.getElementById('ocrProgress');
+  overlay.classList.add('active');
+
+  const data = getState();
+  if (!data.boletimImages[id]) data.boletimImages[id] = [];
+
+  let ocrResults = [];
+  let pdfFound = false;
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const isPDF = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+    statusEl.textContent = `Processando ${isPDF ? 'PDF' : 'imagem'} ${i + 1} de ${files.length}...`;
+    progressEl.style.width = `${((i) / files.length) * 100}%`;
+
+    if (isPDF) {
+      // Extrai texto direto do PDF (sem OCR)
+      pdfFound = true;
+      try {
+        statusEl.textContent = `Extraindo texto do PDF (${f.name})...`;
+        let text = await extractTextFromPDF(f);
+        // Se não achamos nenhuma nota decimal (X,Y), o PDF é escaneado → usa OCR
+        if (!/\d{1,2}[,.]\d{1,2}/.test(text)) {
+          statusEl.textContent = `PDF sem camada de texto — rodando OCR...`;
+          text = await ocrPDFFallback(f, statusEl, progressEl, i, files.length);
+        }
+        console.log('[SPABB] PDF texto extraído (' + text.length + ' chars):', text.slice(0, 300));
+        ocrResults.push(text);
+      } catch (err) {
+        console.error('PDF extract error:', err);
+        toast('Erro ao ler PDF: ' + err.message, 'error');
+        ocrResults.push('');
+      }
+    } else {
+      // Imagem: guarda base64 e roda OCR
+      const b64 = await fileToBase64(f);
+      data.boletimImages[id].push(b64);
+      try {
+        statusEl.textContent = `Reconhecendo texto da imagem ${i + 1}...`;
+        const result = await Tesseract.recognize(b64, 'por+eng', {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const imgProgress = (i / files.length) + (m.progress / files.length);
+              progressEl.style.width = `${imgProgress * 100}%`;
+            }
+          }
+        });
+        ocrResults.push(result.data.text);
+      } catch (err) {
+        console.error('OCR error:', err);
+        ocrResults.push('');
+      }
+    }
+  }
+
+  setState(data);
+  document.getElementById('adminBoletimImg').value = '';
+  loadAdminBoletim();
+
+  // Parse OCR results and auto-fill grades
+  if (ocrResults.some(r => r.trim())) {
+    statusEl.textContent = 'Preenchendo notas automaticamente...';
+    await new Promise(r => setTimeout(r, 500));
+    // Para PDFs usamos apenas o parser inteligente que respeita períodos.
+    // Não caímos no parser antigo para PDF, porque ele grava no período
+    // selecionado na tela e pode preencher 3º/4º bimestre mesmo quando
+    // essas colunas estão em branco no boletim.
+    const combinedText = ocrResults.join('\n');
+    let filled = 0;
+    if (pdfFound) {
+      filled = parseAndFillBoletimPDF(combinedText, id);
+      const parsedSubjects = Object.keys(window.__pdfFillCache || {});
+      if (parsedSubjects.length > 0) {
+        // Substitui totalmente cada disciplina reconhecida no PDF: apaga
+        // os períodos ausentes e mantém somente os períodos extraídos.
+        saveAllPeriodsFromCurrentInputs(id);
+        loadAdminBoletim();
+      }
+    } else {
+      filled = parseAndFillBoletim(combinedText);
+    }
+    if (filled > 0) {
+      toast(`${pdfFound ? 'PDF' : 'Imagens'} processado(s) — ${filled} notas reconhecidas e distribuídas nos períodos!`, 'success');
+    } else {
+      toast('Arquivos anexados, mas não foi possível reconhecer as notas.', 'info');
+    }
+  } else {
+    toast('Arquivos anexados!', 'success');
+  }
+
+  overlay.classList.remove('active');
+}
+
+// Salva todos os períodos do boletim para o aluno com base no cache do PDF.
+// IMPORTANTE: para cada disciplina reconhecida, substitui totalmente o
+// boletim daquela disciplina e grava SOMENTE os períodos que vieram no PDF.
+// Assim, se o PDF tem só 1º e 2º períodos, o 3º e o 4º ficam em branco.
+function saveAllPeriodsFromCurrentInputs(studentId) {
+  const data = getState();
+  if (!data.boletim[studentId]) data.boletim[studentId] = {};
+  const cache = window.__pdfFillCache || {};
+  Object.keys(cache).forEach(subject => {
+    // Zera a disciplina para evitar herança/acúmulo de valores antigos
+    // ou de execuções anteriores do parser.
+    data.boletim[studentId][subject] = {};
+    // Grava apenas os períodos que o PDF forneceu.
+    Object.keys(cache[subject]).forEach(period => {
+      data.boletim[studentId][subject][period] = cache[subject][period];
+    });
+  });
+  setState(data);
+  window.__pdfFillCache = {};
+}
+
+function parseAndFillBoletim(text) {
+  // Normalize text
+  text = text.toUpperCase();
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  
+  let filledCount = 0;
+  const period = document.getElementById('adminBoletimPeriod').value;
+  
+  // Map of subject variations to standard names
+  const subjectMap = {
+    'ARTE': ['ARTE'],
+    'CIÊNCIAS': ['CIÊNCIAS', 'CIENCIAS'],
+    'EDUCAÇÃO ÉTNICO-RACIAL': ['EDUCAÇÃO ÉTNICO-RACIAL', 'EDUCACAO ETNICO-RACIAL', 'ÉTNICO-RACIAL', 'ETNICO-RACIAL'],
+    'EDUCAÇÃO FINANCEIRA': ['EDUCAÇÃO FINANCEIRA', 'EDUCACAO FINANCEIRA', 'FINANCEIRA'],
+    'EDUCAÇÃO SOCIOEMOCIONAL': ['EDUCAÇÃO SOCIOEMOCIONAL', 'EDUCACAO SOCIOEMOCIONAL', 'SOCIOEMOCIONAL'],
+    'FORMAÇÃO CIDADÃ': ['FORMAÇÃO CIDADÃ', 'FORMACAO CIDA DA', 'FORMAÇÃO CIDADÃ', 'CIDADÃ'],
+    'FORMAÇÃO DO LEITOR': ['FORMAÇÃO DO LEITOR', 'FORMACAO DO LEITOR', 'LEITOR'],
+    'GEOGRAFIA': ['GEOGRAFIA'],
+    'HABILIDADES EM FOCO – LP': ['HABILIDADES EM FOCO – LP', 'HABILIDADES EM FOCO LP', 'HAB. EM FOCO LP', 'HAB. FOCO LP'],
+    'HABILIDADES EM FOCO – MA': ['HABILIDADES EM FOCO – MA', 'HABILIDADES EM FOCO MA', 'HAB. EM FOCO MA', 'HAB. FOCO MA'],
+    'HISTÓRIA': ['HISTÓRIA', 'HISTORIA'],
+    'INGLÊS': ['INGLÊS', 'INGLES'],
+    'LÍNGUA PORTUGUESA': ['LÍNGUA PORTUGUESA', 'LINGUA PORTUGUESA', 'PORTUGUÊS', 'PORTUGUES'],
+    'MATEMÁTICA': ['MATEMÁTICA', 'MATEMATICA'],
+    'RECREAÇÃO': ['RECREAÇÃO', 'RECREACAO']
+  };
+  
+  // Find grades in text (patterns like "8,5" or "8.5" or "10")
+  const gradePattern = /(\d+)[,.](\d+)|(\d{1,2})(?=\s|$|[^\d])/g;
+  
+  // For each line, try to match subject and grade
+  lines.forEach(line => {
+    // Try to find a subject in this line
+    let matchedSubject = null;
+    
+    for (const [standard, variations] of Object.entries(subjectMap)) {
+      for (const variation of variations) {
+        if (line.includes(variation)) {
+          matchedSubject = standard;
+          break;
+        }
+      }
+      if (matchedSubject) break;
+    }
+    
+    if (matchedSubject) {
+      // Extract grade from the line
+      const gradeMatch = line.match(/(\d+)[,.](\d+)|(\d{1,2})(?=\s|$|[^\d])/);
+      if (gradeMatch) {
+        let grade;
+        if (gradeMatch[1] && gradeMatch[2]) {
+          grade = parseFloat(`${gradeMatch[1]}.${gradeMatch[2]}`);
+        } else if (gradeMatch[3]) {
+          grade = parseFloat(gradeMatch[3]);
+        }
+        
+        // Validate grade (0-10)
+        if (grade !== undefined && grade >= 0 && grade <= 10) {
+          // Find the input field and fill it
+          const input = document.querySelector(`#adminBoletimSubjects input[data-subject="${matchedSubject}"][data-period="${period}"]`);
+          if (input && !input.value) {
+            input.value = grade.toFixed(1).replace('.', ',');
+            filledCount++;
+          }
+        }
+      }
+    }
+  });
+  
+  return filledCount;
+}
+
+// ══════════════════════════════════════════
+// PARSER INTELIGENTE — Boletim PDF
+// Reconhece cada disciplina e distribui as notas nos períodos corretos.
+// Regra: em cada linha da disciplina, os números decimais (com vírgula/ponto)
+// representam as notas dos períodos 1º, 2º, 3º, 4º em ordem, seguidos pelo
+// total anual (média anual = soma dos períodos). Detectamos o total pela
+// última nota decimal cujo valor é aproximadamente a soma das anteriores
+// (tolerância 0,3) OU pelo fato de ser > 10 (nota individual nunca ultrapassa 10).
+// ══════════════════════════════════════════
+function normalizeSubjectKey(s) {
+  return s.toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[–\-]/g, ' ')
+    .replace(/[^A-Z0-9 ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseAndFillBoletimPDF(rawText, studentId) {
+  if (!rawText || !rawText.trim()) return 0;
+
+  // Aliases de cada disciplina padrão -> chaves normalizadas usadas para matching.
+  const SUBJECT_ALIASES = {
+    'ARTE': ['ARTE'],
+    'CIÊNCIAS': ['CIENCIAS'],
+    'EDUCAÇÃO ÉTNICO-RACIAL': ['EDUCACAOETNICORACIAL', 'ETNICORACIAL'],
+    'EDUCAÇÃO FINANCEIRA': ['EDUCACAOFINANCEIRA'],
+    'EDUCAÇÃO SOCIOEMOCIONAL': ['EDUCACAOSOCIOEMOCIONAL', 'SOCIOEMOCIONAL'],
+    'FORMAÇÃO CIDADÃ': ['FORMACAOCIDADA'],
+    'FORMAÇÃO DO LEITOR': ['FORMACAODOLEITOR'],
+    'GEOGRAFIA': ['GEOGRAFIA'],
+    'HABILIDADES EM FOCO – LP': ['HABILIDADESEMFOCOLP', 'HABEMFOCOLP', 'HABFOCOLP'],
+    'HABILIDADES EM FOCO – MA': ['HABILIDADESEMFOCOMA', 'HABEMFOCOMA', 'HABFOCOMA'],
+    'HISTÓRIA': ['HISTORIA'],
+    'INGLÊS': ['INGLES'],
+    'LÍNGUA PORTUGUESA': ['LINGUAPORTUGUESA', 'PORTUGUES'],
+    'MATEMÁTICA': ['MATEMATICA'],
+    'RECREAÇÃO': ['RECREACAO']
+  };
+
+  // Cache global para saveAllPeriodsFromCurrentInputs
+  window.__pdfFillCache = {};
+  let filledCount = 0;
+  const period = document.getElementById('adminBoletimPeriod').value;
+
+  // Estratégia: pdf.js pode devolver cada célula da tabela em uma "linha"
+  // separada. Então trabalhamos com o texto INTEIRO tokenizado — cada token
+  // é ou uma palavra (letras) ou um número (decimal ou inteiro). Percorremos
+  // sequencialmente: quando encontrarmos uma disciplina (uma ou mais palavras
+  // que juntas formam um alias), coletamos os próximos números decimais até
+  // encontrar a próxima disciplina.
+
+  // Normaliza o texto todo (remove acentos, upper, mantém letras/números/vírgulas/pontos/espaços)
+  const norm = rawText.toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[–\-]/g, ' ');
+
+  // Tokeniza — tokens: sequências de letras OU decimais (X,Y) OU inteiros
+  // A ordem do regex importa: decimal antes de inteiro.
+  const tokenRegex = /([A-Z]+)|(\d{1,2}[,.]\d{1,2})|(\d{1,3})/g;
+  const tokens = []; // { type: 'word'|'dec'|'int', value: string|number }
+  let m;
+  while ((m = tokenRegex.exec(norm)) !== null) {
+    if (m[1]) tokens.push({ type: 'word', value: m[1] });
+    else if (m[2]) tokens.push({ type: 'dec', value: parseFloat(m[2].replace(',', '.')) });
+    else if (m[3]) tokens.push({ type: 'int', value: parseInt(m[3]) });
+  }
+
+  // Cria "compactWord" cumulativo — as próximas até N palavras concatenadas
+  // sem espaço para tentar casar aliases compactos.
+  function tryMatchSubjectAt(startIdx) {
+    // Tenta juntar até 5 palavras consecutivas e ver se alguma resulta em alias.
+    let acc = '';
+    let bestMatch = null; // { subject, wordsConsumed, aliasLen }
+    for (let k = 0; k < 5 && startIdx + k < tokens.length; k++) {
+      const t = tokens[startIdx + k];
+      if (t.type !== 'word') break;
+      acc += t.value;
+      for (const [standard, aliases] of Object.entries(SUBJECT_ALIASES)) {
+        for (const alias of aliases) {
+          // Caso 1: alias está contido no acumulado (ex.: alias curto)
+          // Caso 2: acumulado começa com alias (mais estrito, evita match parcial)
+          if (acc.includes(alias)) {
+            const aliasLen = alias.length;
+            if (!bestMatch || aliasLen > bestMatch.aliasLen) {
+              bestMatch = { subject: standard, wordsConsumed: k + 1, aliasLen };
+            }
+          }
+        }
+      }
+    }
+    return bestMatch;
+  }
+
+  // Passo 1: localiza os índices onde uma disciplina começa.
+  const anchors = []; // { subject, tokenIdx, endTokenIdx }
+  let i = 0;
+  while (i < tokens.length) {
+    if (tokens[i].type === 'word') {
+      const match = tryMatchSubjectAt(i);
+      if (match) {
+        // Evita re-detectar a mesma disciplina imediatamente (ex.: cabeçalho)
+        anchors.push({
+          subject: match.subject,
+          tokenIdx: i,
+          endTokenIdx: i + match.wordsConsumed
+        });
+        i += match.wordsConsumed;
+        continue;
+      }
+    }
+    i++;
+  }
+
+  // Se a mesma disciplina aparece várias vezes (cabeçalho + linha de dados),
+  // escolhemos o anchor cujo bloco de números seguintes tenha ao menos 1 decimal
+  // (a linha de dados) e mais decimais do que os outros.
+  const anchorBlocks = anchors.map((a, idx) => {
+    const nextStart = idx + 1 < anchors.length ? anchors[idx + 1].tokenIdx : tokens.length;
+    const nums = [];
+    for (let j = a.endTokenIdx; j < nextStart; j++) {
+      if (tokens[j].type === 'dec') nums.push(tokens[j].value);
+      // Paramos se encontramos muitos ints seguidos (área de faltas) — mas
+      // ainda deixamos os decimais eventuais depois passarem, para tolerância.
+    }
+    return { ...a, nums };
+  });
+
+  // Para cada disciplina padrão, escolhe o bloco com mais decimais.
+  const bestBySubject = {};
+  anchorBlocks.forEach(b => {
+    if (!bestBySubject[b.subject] || b.nums.length > bestBySubject[b.subject].nums.length) {
+      bestBySubject[b.subject] = b;
+    }
+  });
+
+  // Passo 2: interpreta cada bloco — separa notas dos períodos vs total anual.
+  // Regra: o TOTAL ANUAL é o primeiro número da sequência que seja
+  // aproximadamente igual à SOMA dos anteriores. Isso funciona para qualquer
+  // quantidade de períodos preenchidos:
+  //   [9,5, 9,5, 19,0]  → 2 períodos [9,5; 9,5], total=19,0
+  //   [9,5, 9,5]        → 1 período  [9,5]     , total=9,5  (nota = média anual)
+  //   [8,0, 8,5, 9,0, 9,5, 35,0] → 4 períodos, total=35,0
+  //   [8,0]             → 1 período  [8,0]     (sem total identificável)
+  function extractPeriodsFromNums(nums) {
+    if (nums.length === 0) return [];
+    if (nums.length === 1) return nums[0] <= 10 ? [nums[0]] : [];
+
+    // Estratégia: procuramos, entre TODOS os índices k possíveis, aquele em que
+    // a soma dos números anteriores é aproximadamente igual a nums[k].
+    // Preferimos o k com o MAIOR número de períodos válidos (todos ≤10).
+    // Se houver empate, preferimos k tal que k é o ÚLTIMO decimal do bloco
+    // (o total anual é normalmente o último decimal antes das faltas).
+    let bestK = -1;
+    for (let k = 1; k < nums.length; k++) {
+      const prev = nums.slice(0, k);
+      if (!prev.every(v => v <= 10)) break;
+      if (prev.length > 4) break; // máximo 4 períodos
+      const sum = prev.reduce((a, c) => a + c, 0);
+      if (Math.abs(sum - nums[k]) < 0.4) {
+        // Este k é candidato. Se for maior que o atual, atualizamos.
+        if (k > bestK) bestK = k;
+      }
+    }
+    if (bestK > 0) return nums.slice(0, bestK).slice(0, 4);
+
+    // Sem total anual detectado, não assumimos mais que todos os decimais
+    // seguintes são períodos. Em alguns PDFs o pdf.js mistura média parcial,
+    // totais ou células vizinhas depois das notas reais; aceitar todos os
+    // decimais era o que preenchia 3º/4º bimestre mesmo quando estavam
+    // em branco. A regra segura é manter apenas a primeira nota válida.
+    const valid = nums.filter(v => v <= 10);
+    if (valid.length === 0) return [];
+    if (valid.length === 2 && Math.abs(valid[0] - valid[1]) < 0.4) {
+      return [valid[0]]; // só 1 período, valor duplicado como total
+    }
+    return [valid[0]];
+  }
+
+  Object.values(bestBySubject).forEach(b => {
+    // Cria o cache da disciplina assim que ela for reconhecida. Mesmo que
+    // nenhuma nota válida venha no PDF, saveAllPeriodsFromCurrentInputs()
+    // substituirá a disciplina por vazio, removendo períodos antigos.
+    if (!window.__pdfFillCache[b.subject]) window.__pdfFillCache[b.subject] = {};
+    if (b.nums.length === 0) return;
+    let periodGrades = extractPeriodsFromNums(b.nums);
+
+    periodGrades.forEach((grade, idx) => {
+      const p = String(idx + 1);
+      window.__pdfFillCache[b.subject][p] = grade;
+      if (p === period) {
+        const input = document.querySelector(`#adminBoletimSubjects input[data-subject="${b.subject}"][data-period="${p}"]`);
+        if (input) input.value = grade.toFixed(1).replace('.', ',');
+      }
+      filledCount++;
+    });
+  });
+
+  // Debug útil no console
+  console.log('[SPABB] parseAndFillBoletimPDF — texto extraído (primeiros 500 chars):', rawText.slice(0, 500));
+  console.log('[SPABB] tokens:', tokens.length, 'anchors:', anchors.length, 'preenchidas:', filledCount);
+  console.log('[SPABB] cache:', JSON.parse(JSON.stringify(window.__pdfFillCache)));
+
+  return filledCount;
+}
+
+async function rerunOCROnExisting() {
+  const id = document.getElementById('adminBoletimStudent').value;
+  if (!id) { toast('Selecione um aluno.', 'error'); return; }
+  
+  const images = getBoletimImages(id);
+  if (images.length === 0) {
+    toast('Nenhuma imagem encontrada para este aluno.', 'info');
+    return;
+  }
+  
+  // Show OCR overlay
+  const overlay = document.getElementById('ocrOverlay');
+  const statusEl = document.getElementById('ocrStatus');
+  const progressEl = document.getElementById('ocrProgress');
+  overlay.classList.add('active');
+  
+  let ocrResults = [];
+  
+  for (let i = 0; i < images.length; i++) {
+    statusEl.textContent = `Processando imagem ${i + 1} de ${images.length}...`;
+    progressEl.style.width = `${((i) / images.length) * 100}%`;
+    
+    try {
+      const result = await Tesseract.recognize(images[i], 'por+eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            const imgProgress = (i / images.length) + (m.progress / images.length);
+            progressEl.style.width = `${imgProgress * 100}%`;
+          }
+        }
+      });
+      ocrResults.push(result.data.text);
+    } catch (err) {
+      console.error('OCR error:', err);
+      ocrResults.push('');
+    }
+  }
+  
+  // Parse OCR results and auto-fill grades
+  if (ocrResults.some(r => r.trim())) {
+    statusEl.textContent = 'Preenchendo notas automaticamente...';
+    await new Promise(r => setTimeout(r, 500));
+    const filled = parseAndFillBoletim(ocrResults.join('\n'));
+    if (filled > 0) {
+      toast(`${filled} notas preenchidas automaticamente!`, 'success');
+    } else {
+      toast('Não foi possível reconhecer as notas nas imagens.', 'info');
+    }
+  } else {
+    toast('Não foi possível reconhecer texto nas imagens.', 'error');
+  }
+  
+  overlay.classList.remove('active');
+}
+
+function removeBoletimImage(studentId, index) {
+  const data = getState();
+  data.boletimImages[studentId].splice(index, 1);
+  setState(data);
+  loadAdminBoletim();
+  toast('Imagem removida.', 'info');
+}
+
+// ══════════════════════════════════════════
+// ADMIN: SIMULADOS
+// ══════════════════════════════════════════
+function loadAdminSimulados() {
+  const id = document.getElementById('adminSimStudent').value;
+  if (!id) return;
+  const simulados = getSimulados(id);
+  const el = document.getElementById('adminSimList');
+  if (simulados.length === 0) { el.innerHTML = '<p style="color:var(--muted);font-size:.8rem;padding:10px">Nenhum simulado registrado.</p>'; return; }
+  el.innerHTML = simulados.map((s, i) => `
+    <div class="admin-list-item">
+      <div class="info">
+        <strong>${s.name || 'Simulado ' + (i+1)}</strong>
+        <span>Port: ${s.port !== undefined ? s.port.toFixed(1)+'%' : '—'} (${sitLabel(s.portSit)}) | Mat: ${s.mat !== undefined ? s.mat.toFixed(1)+'%' : '—'} (${sitLabel(s.matSit)})</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-blue btn-sm" onclick="adminEditSimulado(${i})">✏ Editar</button>
+        <button class="btn btn-red btn-sm" onclick="adminDeleteSimulado(${i})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function adminSaveSimulado() {
+  const id = document.getElementById('adminSimStudent').value;
+  if (!id) { toast('Selecione um aluno.', 'error'); return; }
+  const num = document.getElementById('adminSimNumber').value;
+  const name = document.getElementById('adminSimName').value.trim();
+  const port = parseFloat(document.getElementById('adminSimPort').value);
+  const mat = parseFloat(document.getElementById('adminSimMat').value);
+  const portSit = document.getElementById('adminSimPortSit').value;
+  const matSit = document.getElementById('adminSimMatSit').value;
+
+  if (isNaN(port) && isNaN(mat)) { toast('Informe ao menos uma nota.', 'error'); return; }
+
+  const data = getState();
+  if (!data.simulados[id]) data.simulados[id] = [];
+
+  const sim = { name: name || `${num}º SIMULADO`, port: isNaN(port) ? undefined : port, mat: isNaN(mat) ? undefined : mat, portSit, matSit };
+
+  // Check if editing existing
+  const existingIdx = data.simulados[id].findIndex(s => s.name === sim.name);
+  if (existingIdx >= 0) {
+    data.simulados[id][existingIdx] = sim;
+  } else {
+    data.simulados[id].push(sim);
+    data.simulados[id].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+
+  setState(data);
+  loadAdminSimulados();
+  toast('Simulado salvo!', 'success');
+
+  // Clear fields
+  document.getElementById('adminSimPort').value = '';
+  document.getElementById('adminSimMat').value = '';
+  document.getElementById('adminSimName').value = '';
+}
+
+function adminEditSimulado(idx) {
+  const id = document.getElementById('adminSimStudent').value;
+  const simulados = getSimulados(id);
+  const s = simulados[idx];
+  if (!s) return;
+  document.getElementById('adminSimNumber').value = idx + 1;
+  document.getElementById('adminSimName').value = s.name || '';
+  document.getElementById('adminSimPort').value = s.port || '';
+  document.getElementById('adminSimMat').value = s.mat || '';
+  document.getElementById('adminSimPortSit').value = s.portSit || 'INTERMEDIARIO';
+  document.getElementById('adminSimMatSit').value = s.matSit || 'INTERMEDIARIO';
+}
+
+function adminDeleteSimulado(idx) {
+  const id = document.getElementById('adminSimStudent').value;
+  if (!id) return;
+  if (!confirm('Remover este simulado?')) return;
+  const data = getState();
+  data.simulados[id].splice(idx, 1);
+  setState(data);
+  loadAdminSimulados();
+  toast('Simulado removido.', 'info');
+}
+
+function adminRemoveSimulado() {
+  const id = document.getElementById('adminSimStudent').value;
+  if (!id) { toast('Selecione um aluno.', 'error'); return; }
+  const name = document.getElementById('adminSimName').value.trim();
+  if (!name) { toast('Informe o nome do simulado para remover.', 'error'); return; }
+  const data = getState();
+  const idx = (data.simulados[id] || []).findIndex(s => s.name === name);
+  if (idx === -1) { toast('Simulado não encontrado.', 'error'); return; }
+  data.simulados[id].splice(idx, 1);
+  setState(data);
+  loadAdminSimulados();
+  toast('Simulado removido!', 'success');
+}
+
+// ══════════════════════════════════════════
+// LANÇAMENTO AUTOMÁTICO DE SIMULADO VIA PDF
+// ══════════════════════════════════════════
+let simAutoData = [];
+let simAutoContext = null;
+let simAutoRun = 0;
+function simNorm(s) {
+  return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9,.%\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function simTrunc1(v) { return Math.trunc(v * 10 + 1e-8) / 10; }
+function simFindSit(seg) {
+  const matches = [...simNorm(seg).matchAll(/\b(MUITO\s+CRITICO|INTERMEDIARIO|CRITICO|ADEQUADO)\b/g)];
+  return matches.length === 1 ? matches[0][1].replace(/\s+/g, '_') : '';
+}
+function simScoreCandidates(seg) {
+  return [...seg.matchAll(/(?:^|\s)(\d{1,3}(?:[.,]\d{1,2})?)\s*(%?)(?=\s|$)/g)]
+    .map(m => ({ value: Number(m[1].replace(',', '.')), decimal: /[.,]/.test(m[1]), percent: m[2] === '%' }))
+    .filter(m => m.value >= 0 && m.value <= 100);
+}
+function simFindScore(seg) {
+  const all = simScoreCandidates(seg);
+  const explicit = all.filter(m => m.decimal || m.percent);
+  const candidates = explicit.length ? explicit : all;
+  return candidates.length === 1 ? candidates[0].value : NaN;
+}
+function simParseRecords(text, students, disc) {
+  const names = students.map(st => simNorm(st.name));
+  const occurrences = students.map(() => []);
+  let columns = [];
+  for (const original of text.split(/\r?\n|\f/)) {
+    if (!original.trim()) { columns = []; continue; }
+    const line = simNorm(original);
+    const headers = [...line.matchAll(/\b(PORTUGUES|LINGUA PORTUGUESA|MATEMATICA)\b/g)];
+    if (headers.length && /\b(ALUNO|NOME|NOTA|RESULTADO|SITUACAO|DISCIPLINA)\b/.test(line)) {
+      columns = headers.map(h => h[1] === 'MATEMATICA' ? 'mat' : 'port');
+      continue;
+    }
+    // Locate the student name anywhere in the row (row number, matrícula etc. may come before it).
+    const row = ' ' + line + ' ';
+    const found = [];
+    names.forEach((n, i) => {
+      if (!n) return;
+      const pos = row.indexOf(' ' + n + ' ');
+      if (pos >= 0) { found.push({ i, end: pos + n.length + 1, len: n.length }); return; }
+      // Fuzzy: all name words (ignoring DE/DA/DOS...) appear in order on the row.
+      const toks = n.split(' ').filter(t => t.length > 2 && !/^(DAS|DOS|DE|DA|DO|E)$/.test(t));
+      if (toks.length < 2) return;
+      let at = 0, ok = true, end = 0;
+      for (const t of toks) { const q = row.indexOf(' ' + t + ' ', at); if (q < 0) { ok = false; break; } at = q + t.length + 1; end = at; }
+      if (ok) found.push({ i, end, len: n.length - 0.5 });
+    });
+    if (!found.length) continue;
+    const longest = Math.max(...found.map(f => f.len));
+    const best = found.filter(f => f.len === longest);
+    const exact = best.map(f => f.i);
+    if (exact.length !== 1) {
+      exact.forEach(i => occurrences[i].push({ raw: NaN, sit: '', reason: 'Nome duplicado no cadastro' }));
+      continue;
+    }
+    const i = exact[0];
+    let tail = row.slice(best[0].end).trim();
+    // Extra name words right after a single-word name probably mean a different person.
+    if (names[i].split(' ').length < 2 && /^[A-Z]{3,}/.test(tail) && !/^(NOTA|RESULTADO|PERCENTUAL|ADEQUADO|INTERMEDIARIO|CRITICO|MUITO CRITICO)\b/.test(tail)) continue;
+    // Drop leftover name words (e.g. extra surnames) before the numbers.
+    tail = tail.replace(/^(?:(?!ADEQUADO|INTERMEDIARIO|CRITICO|MUITO)[A-Z]+\s+)+(?=\d)/, '');
+    let raw = NaN, sit = '', reason = '';
+    if (columns.length === 1 && columns[0] !== disc) {
+      reason = 'Disciplina diferente no PDF';
+    } else if (columns.length === 2 && new Set(columns).size === 2) {
+      const groups = [...tail.matchAll(/([^A-Z]*?)\b(MUITO\s+CRITICO|INTERMEDIARIO|CRITICO|ADEQUADO)\b/g)];
+      const index = columns.indexOf(disc);
+      if (groups.length === 2 && index >= 0) {
+        raw = simFindScore(groups[index][1]);
+        sit = simFindSit(groups[index][2]);
+      } else reason = 'Colunas não reconhecidas com segurança';
+    } else {
+      raw = simFindScore(tail);
+      sit = simFindSit(tail);
+    }
+    if (!Number.isFinite(raw)) { sit = ''; reason = reason || 'Nota ausente ou ambígua'; }
+    occurrences[i].push({ raw, sit, reason });
+  }
+  return students.map((st, i) => {
+    const records = occurrences[i];
+    const r = records.length === 1 ? records[0] : { raw: NaN, sit: '', reason: records.length ? 'Mais de uma linha para este nome' : 'Nome não encontrado no PDF' };
+    return { id: st.id, name: st.name, found: records.length > 0, raw: r.raw, score: Number.isFinite(r.raw) ? simTrunc1(r.raw) : NaN, sit: r.sit, reason: r.reason };
+  });
+}
+async function simExtractPDF(file, statusEl, progEl) {
+  if (!window.pdfjsLib) throw new Error('pdf.js não carregado');
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const pages = [];
+  try {
+    for (let p = 1; p <= pdf.numPages; p++) {
+      statusEl.textContent = `Lendo página ${p}/${pdf.numPages}...`;
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      const items = tc.items.filter(it => it.str && it.str.trim()).sort((a, b) => b.transform[5] - a.transform[5] || a.transform[4] - b.transform[4]);
+      const rows = [];
+      for (const it of items) {
+        const height = Math.abs(it.transform[3]) || it.height || 10;
+        let row = rows.find(r => Math.abs(r.y - it.transform[5]) <= Math.min(r.height, height) * 0.5);
+        if (!row) { row = { y: it.transform[5], height, items: [] }; rows.push(row); }
+        row.items.push(it);
+      }
+      let text = rows.map(r => r.items.sort((a, b) => a.transform[4] - b.transform[4]).map(it => it.str).join(' ')).join('\n');
+      if (text.replace(/\s/g, '').length < 30) {
+        statusEl.textContent = `Reconhecendo imagem da página ${p}/${pdf.numPages}...`;
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width; canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        const result = await Tesseract.recognize(canvas.toDataURL('image/png'), 'por+eng');
+        text = result.data.text;
+      }
+      pages.push(text);
+      progEl.style.width = `${p / pdf.numPages * 100}%`;
+    }
+  } finally { await pdf.destroy(); }
+  return pages.join('\n\f\n');
+}
+function simAutoInvalidate() {
+  simAutoRun++;
+  simAutoData = []; simAutoContext = null;
+  document.getElementById('simAutoResults').innerHTML = '';
+  document.getElementById('simAutoSaveBtn').disabled = true;
+  document.getElementById('simAutoStatus').textContent = '';
+  document.getElementById('simAutoProg').style.width = '0';
+}
+async function simAutoRecognize() {
+  simAutoInvalidate();
+  const file = document.getElementById('simAutoFile').files[0];
+  const name = document.getElementById('simAutoName').value.trim();
+  const disc = document.getElementById('simAutoDisc').value;
+  const classId = document.getElementById('simAutoClass').value;
+  const statusEl = document.getElementById('simAutoStatus');
+  if (!classId) { toast('Selecione a turma.', 'error'); return; }
+  const progEl = document.getElementById('simAutoProg');
+  if (!name) { toast('Informe o nome do simulado.', 'error'); return; }
+  if (!file) { toast('Anexe o PDF com os resultados.', 'error'); return; }
+  const run = simAutoRun;
+  try {
+    const text = await simExtractPDF(file, statusEl, progEl);
+    if (run !== simAutoRun) return;
+    simAutoData = simParseRecords(text, getStudents().filter(st => st.classId === classId), disc);
+    if (!simAutoData.length) { statusEl.textContent = 'Nenhum aluno cadastrado nesta turma.'; return; }
+    simAutoContext = { name, disc, classId };
+    const count = simAutoData.filter(r => Number.isFinite(r.score)).length;
+    statusEl.textContent = `${count} resultado(s) reconhecido(s); ${simAutoData.length - count} em branco. Confira antes de salvar.`;
+    simAutoRender();
+  } catch (e) {
+    if (run !== simAutoRun) return;
+    console.error(e); statusEl.textContent = 'Erro ao ler o PDF. Nenhum resultado foi alterado.';
+    toast('Erro ao ler o PDF.', 'error');
+  }
+}
+function simEscape(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+function simAutoRender() {
+  const sits = [['','—'],['ADEQUADO','ADEQUADO'],['INTERMEDIARIO','INTERMEDIÁRIO'],['CRITICO','CRÍTICO'],['MUITO_CRITICO','MUITO CRÍTICO']];
+  document.getElementById('simAutoResults').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <tr style="text-align:left"><th style="padding:6px">✔</th><th>Aluno</th><th>Nota PDF</th><th>Nota lançada</th><th>Situação</th></tr>
+      ${simAutoData.map((r, i) => `
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:6px"><input type="checkbox" id="simAutoChk${i}" aria-label="Selecionar ${simEscape(r.name)}" checked></td>
+        <td>${simEscape(r.name)}${r.reason ? `<small style="display:block;color:var(--muted)">${simEscape(r.reason)}</small>` : ''}</td>
+        <td>${Number.isFinite(r.raw) ? r.raw.toFixed(2).replace('.', ',') : '—'}</td>
+        <td><input type="number" step="0.1" min="0" max="100" id="simAutoScore${i}" aria-label="Nota de ${simEscape(r.name)}" value="${Number.isFinite(r.score) ? r.score.toFixed(1) : ''}" style="width:90px" ${!r.found ? 'disabled' : ''}></td>
+        <td><select id="simAutoSit${i}" aria-label="Situação de ${simEscape(r.name)}" ${!r.found ? 'disabled' : ''}>${sits.map(([v,l]) => `<option value="${v}" ${r.sit === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+      </tr>`).join('')}
+    </table>`;
+  document.getElementById('simAutoSaveBtn').disabled = false;
+}
+function simClearDiscipline(data, id, name, disc) {
+  const list = data.simulados[id] || [];
+  let count = 0;
+  for (const sim of list) {
+    if (sim.name !== name) continue;
+    if (sim[disc] !== undefined || sim[disc + 'Sit'] !== undefined) count++;
+    delete sim[disc]; delete sim[disc + 'Sit'];
+  }
+  data.simulados[id] = list.filter(s => s.name !== name || s.port !== undefined || s.mat !== undefined);
+  return count;
+}
+function simAutoSave() {
+  const disc = document.getElementById('simAutoDisc').value;
+  const name = document.getElementById('simAutoName').value.trim();
+  const classId = document.getElementById('simAutoClass').value;
+  if (!simAutoContext || simAutoContext.name !== name || simAutoContext.disc !== disc || simAutoContext.classId !== classId) { toast('Reconheça o PDF novamente antes de salvar.', 'error'); return; }
+  const changes = [];
+  for (let i = 0; i < simAutoData.length; i++) {
+    const r = simAutoData[i];
+    if (!document.getElementById('simAutoChk' + i).checked) continue;
+    const input = document.getElementById('simAutoScore' + i).value.trim();
+    const v = input === '' || !r.found ? NaN : Number(input);
+    if (input !== '' && r.found && (!Number.isFinite(v) || v < 0 || v > 100)) { toast(`Nota inválida para ${r.name}. Use de 0 a 100.`, 'error'); return; }
+    changes.push({ id: r.id, score: v, sit: document.getElementById('simAutoSit' + i).value });
+  }
+  if (!changes.length) { toast('Selecione ao menos um aluno.', 'error'); return; }
+  const blank = changes.filter(r => !Number.isFinite(r.score)).length;
+  const className = (getClasses().find(c => c.id === classId) || {}).name || '';
+  if (!confirm(`Salvar ${name} — Turma ${className} — ${disc === 'port' ? 'Português' : 'Matemática'}? Os resultados anteriores dos alunos selecionados nesta disciplina serão substituídos; ${blank} ficarão em branco. A outra disciplina será mantida.`)) return;
+  const data = getState();
+  if (!data.simulados) data.simulados = {};
+  let count = 0;
+  changes.forEach(r => {
+    simClearDiscipline(data, r.id, name, disc);
+    if (!Number.isFinite(r.score)) return;
+    const list = data.simulados[r.id];
+    let sim = list.find(s => s.name === name);
+    if (!sim) { sim = { name }; list.push(sim); list.sort((a,b) => (a.name || '').localeCompare(b.name || '')); }
+    sim[disc] = simTrunc1(r.score);
+    if (r.sit) sim[disc + 'Sit'] = r.sit;
+    count++;
+  });
+  setState(data); loadAdminSimulados();
+  simAutoInvalidate();
+  document.getElementById('simAutoStatus').textContent = `${count} resultado(s) salvo(s); ${blank} em branco.`;
+  toast('Resultados salvos!', 'success');
+}
+function simAutoRemove() {
+  const name = document.getElementById('simAutoName').value.trim();
+  const disc = document.getElementById('simAutoDisc').value;
+  const classId = document.getElementById('simAutoClass').value;
+  if (!name) { toast('Informe o nome do simulado para remover.', 'error'); return; }
+  if (!classId) { toast('Selecione a turma.', 'error'); return; }
+  const classIds = new Set(getStudents().filter(st => st.classId === classId).map(st => st.id));
+  const className = (getClasses().find(c => c.id === classId) || {}).name || '';
+  if (!confirm(`Remover os resultados de ${disc === 'port' ? 'Português' : 'Matemática'} do simulado "${name}" da turma ${className}? A outra disciplina e os outros simulados serão mantidos.`)) return;
+  const data = getState();
+  if (!data.simulados) data.simulados = {};
+  let count = 0;
+  Object.keys(data.simulados).filter(id => classIds.has(id)).forEach(id => { count += simClearDiscipline(data, id, name, disc); });
+  if (count) { setState(data); loadAdminSimulados(); }
+  simAutoInvalidate();
+  document.getElementById('simAutoStatus').textContent = count ? `${count} resultado(s) removido(s).` : 'Nenhum resultado salvo para este simulado e disciplina.';
+  toast(count ? 'Resultados removidos!' : 'Nenhum resultado encontrado.', count ? 'success' : 'info');
+}
+function simAutoFillClasses() {
+  const sel = document.getElementById('simAutoClass');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Selecione a turma</option>' + getClasses().map(c => `<option value="${c.id}">${simEscape(c.name)}</option>`).join('');
+  if (getClasses().some(c => c.id === cur)) sel.value = cur;
+}
+if (typeof switchAdminTab === 'function') {
+  const _simOrigSwitch = switchAdminTab;
+  switchAdminTab = function (t) { const r = _simOrigSwitch.apply(this, arguments); if (t === 'tabSimulados') simAutoFillClasses(); return r; };
+}
+try { simAutoFillClasses(); } catch (e) {}
+['simAutoClass','simAutoDisc','simAutoName','simAutoFile'].forEach(id => {
+  document.getElementById(id).addEventListener(id === 'simAutoName' ? 'input' : 'change', simAutoInvalidate);
+});
+
+// ══════════════════════════════════════════
+// FIREBASE INTEGRATION
+// ══════════════════════════════════════════
+function saveFirebaseConfig() {
+  const jsonEl = document.getElementById('firebaseConfigJson');
+  if (!jsonEl) { console.warn('Firebase config UI not available'); return; }
+  const json = jsonEl.value.trim();
+  if (!json) { toast('Cole a configuração JSON do Firebase.', 'error'); return; }
+  try {
+    const config = JSON.parse(json);
+    if (!config.databaseURL) { toast('databaseURL é obrigatório!', 'error'); return; }
+    const data = getState();
+    data.config = config;
+    setState(data);
+    initFirebase(config);
+    toast('Configuração Firebase salva!', 'success');
+  } catch (e) {
+    toast('JSON inválido: ' + e.message, 'error');
+  }
+}
+
+function initFirebase(config) {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(config);
+    }
+    db = firebase.database();
+    if (config.storageBucket) {
+      try { storage = firebase.storage(); } catch(e) { storage = null; }
+    }
+    firebaseReady = true;
+
+    // Listen for real-time updates
+    db.ref('spabb').on('value', snap => {
+      const remote = snap.val();
+      if (remote) {
+        const local = getState();
+        local.students = remote.students || [];
+        local.boletim = remote.boletim || {};
+        local.simulados = remote.simulados || {};
+        local.boletimImages = remote.boletimImages || {};
+        localStorage.setItem('spabb_data', JSON.stringify(local));
+        // Re-render current view
+        const activeView = document.querySelector('.view.active');
+        if (activeView && activeView.id === 'viewHome') renderGrid();
+      }
+    });
+  } catch (e) {
+    console.error('Firebase error:', e.message);
+    firebaseReady = false;
+  }
+}
+
+function syncToFirebase() {
+  if (!firebaseReady || !db) { toast('Firebase não conectado.', 'error'); return; }
+  syncToFirebaseSilent(getState());
+  toast('Dados enviados ao Firebase!', 'success');
+}
+
+function syncToFirebaseSilent(data) {
+  if (!db) return;
+  db.ref('spabb').set({
+    students: data.students || [],
+    boletim: data.boletim || {},
+    simulados: data.simulados || {},
+    boletimImages: data.boletimImages || {}
+  });
+}
+
+function syncFromFirebase() {
+  if (!firebaseReady || !db) { toast('Firebase não conectado.', 'error'); return; }
+  db.ref('spabb').once('value').then(snap => {
+    const remote = snap.val();
+    if (remote) {
+      const data = getState();
+      data.students = remote.students || [];
+      data.boletim = remote.boletim || {};
+      data.simulados = remote.simulados || {};
+      data.boletimImages = remote.boletimImages || {};
+      setState(data);
+      renderGrid();
+      toast('Dados baixados do Firebase!', 'success');
+    } else {
+      toast('Nenhum dado encontrado no Firebase.', 'info');
+    }
+  }).catch(e => toast('Erro: ' + e.message, 'error'));
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+(function init() {
+  const data = getState();
+  
+  // Inicializar turma selecionada
+  if (data.classes && data.classes.length > 0 && !selectedClassId) {
+    selectedClassId = data.classes[0].id;
+  }
+  
+  if (data.config && data.config.databaseURL) {
+    initFirebase(data.config);
+  }
+  renderClassNav();
+  renderGrid();
+})();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"75124c326cb447fe934cde04713ae013","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
